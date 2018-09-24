@@ -1,5 +1,8 @@
 package gstavrinos.destinationalarm
 
+import android.Manifest
+import android.content.Context
+import android.location.*
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -7,13 +10,17 @@ import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
-
-
-
+import android.location.GnssStatus
+import android.util.Log
+import android.location.Criteria
+import com.tbruyelle.rxpermissions2.RxPermissions
 
 class MainActivity : AppCompatActivity() {
 
     private var map: MapView? = null
+    private var locationManager: LocationManager? = null
+    private var provider:String? = "tmp"
+    private var gpsLocationListener:LocationListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +48,73 @@ class MainActivity : AppCompatActivity() {
         mapController.setZoom(5.0)
         val startPoint = GeoPoint(37.981912,23.727447)
         mapController.setCenter(startPoint)
+
+        val mContext = applicationContext
+        locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val isGPSEnabled = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+        var satelliteCount = 0
+
+//        object : GnssStatus.Callback() {
+//            override fun onSatelliteStatusChanged(status: GnssStatus) {
+//                satelliteCount = status.satelliteCount
+//            }
+//
+//            override fun onFirstFix(ttffMillis: Int){
+//                Log.e("FIRST FIX!", "fixed!")
+//            }
+//
+//            override fun onStarted(){
+//                Log.e("STARTED!", "STARTED!")
+//            }
+//
+//            override fun onStopped(){
+//                Log.e("STOPPED!", "STOPPED!")
+//            }
+//        }
+        val rxPermissions = RxPermissions(this)
+
+        rxPermissions
+                .request(Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.INTERNET,
+                        Manifest.permission.ACCESS_NETWORK_STATE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE) // ask single or multiple permission once
+                .subscribe { granted ->
+                    if (granted) {
+                        if (isGPSEnabled) {
+                            if (locationManager != null) {
+                                provider = locationManager!!.getBestProvider(Criteria(), false)
+
+                                gpsLocationListener = object : LocationListener {
+                                    override fun onLocationChanged(loc: Location) {
+                                        // TODO here is where you check the user's location
+                                        Log.e("onLocationChanged!", "onLocationChanged!")
+                                    }
+                                    override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
+                                        Log.e("statusChanged!", "statusChanged!")
+                                    }
+                                    override fun onProviderEnabled(provider: String) {
+                                        Log.e("STARTEDgpslocationListener!", "STARTEDgpslocationListener!")
+                                    }
+                                    override fun onProviderDisabled(provider: String) {
+                                        Log.e("STOPPEDonProviderDisabled!", "STOPPEDonProviderDisabled!")
+                                    }
+                                }
+                                try {
+                                    locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                                            1, 1f,
+                                            gpsLocationListener)
+                                }
+                                catch (e: SecurityException) {
+                                    // TODO handle this!
+                                }
+                            }
+                        }
+                    } else {
+                        // At least one permission is denied
+                    }
+                }
+
     }
 
     public override fun onResume() {
@@ -60,4 +134,7 @@ class MainActivity : AppCompatActivity() {
         //Configuration.getInstance().save(this, prefs);
         map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
     }
+
+
+
 }
