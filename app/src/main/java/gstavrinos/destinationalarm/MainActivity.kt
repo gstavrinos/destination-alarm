@@ -7,14 +7,13 @@ import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
-import org.osmdroid.api.IMapController
 
 
 
 
 class MainActivity : AppCompatActivity() {
 
-    var map: MapView? = null
+    private var map: MapView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         //inflate and create the map
         setContentView(R.layout.activity_main)
 
-        map = findViewById(R.id.mapview) as MapView
+        map = findViewById(R.id.mapview)
         map!!.setTileSource(TileSourceFactory.MAPNIK)
         map!!.setBuiltInZoomControls(true)
         map!!.setMultiTouchControls(true)
