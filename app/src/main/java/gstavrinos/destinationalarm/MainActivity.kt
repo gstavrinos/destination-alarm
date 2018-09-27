@@ -1,6 +1,7 @@
 package gstavrinos.destinationalarm
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.location.*
 import android.support.v7.app.AppCompatActivity
@@ -10,10 +11,20 @@ import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
-import android.location.GnssStatus
 import android.util.Log
 import android.location.Criteria
+import android.widget.Toast
 import com.tbruyelle.rxpermissions2.RxPermissions
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+
+
+
+
+
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -48,6 +59,28 @@ class MainActivity : AppCompatActivity() {
         mapController.setZoom(5.0)
         val startPoint = GeoPoint(37.981912,23.727447)
         mapController.setCenter(startPoint)
+
+        // SHOW USER'S LOCATION :)
+        val mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
+        mLocationOverlay.enableMyLocation()
+        mLocationOverlay.enableFollowLocation()
+        map!!.overlays.add(mLocationOverlay)
+
+
+        val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
+            override fun longPressHelper(p: GeoPoint?): Boolean {
+                Toast.makeText(applicationContext, "LONGPRESS", Toast.LENGTH_SHORT).show();
+                return true
+            }
+
+            override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                Toast.makeText(applicationContext, "Tapped", Toast.LENGTH_SHORT).show();
+                return true
+            }
+
+        })
+
+        map!!.overlays.add(0, mapEventsOverlay);
 
         val mContext = applicationContext
         locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
