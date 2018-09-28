@@ -1,10 +1,8 @@
 package gstavrinos.destinationalarm
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.location.*
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
@@ -13,6 +11,7 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
+import android.support.v7.app.AppCompatActivity
 import android.widget.Toast
 import com.tbruyelle.rxpermissions2.RxPermissions
 import org.osmdroid.events.MapEventsReceiver
