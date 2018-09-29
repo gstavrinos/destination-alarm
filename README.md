@@ -11,4 +11,4 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * Add ability to select alarm sound
 * Add ability to save favourite target locations
 * Add ability to work with offline map
-* Add button to focus on user's location
+* Add button to focus on user's location [DONE]

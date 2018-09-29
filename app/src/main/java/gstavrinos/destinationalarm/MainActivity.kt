@@ -12,7 +12,9 @@ import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
 import android.location.Location.distanceBetween
+import android.provider.SyncStateContract
 import android.support.v7.app.AppCompatActivity
+import android.view.View
 import android.widget.Toast
 import com.tbruyelle.rxpermissions2.RxPermissions
 import org.osmdroid.events.MapEventsReceiver
@@ -20,12 +22,7 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
-
-
-
-
-
-
+import android.widget.ImageButton
 
 
 
@@ -59,6 +56,11 @@ class MainActivity : AppCompatActivity() {
         map!!.setTileSource(TileSourceFactory.MAPNIK)
         map!!.setBuiltInZoomControls(true)
         map!!.setMultiTouchControls(true)
+        map!!.isTilesScaledToDpi = true
+        map!!.isFlingEnabled = true
+        map!!.minZoomLevel = 3.5
+
+        Log.e(map!!.minZoomLevel.toString(), map!!.minZoomLevel.toString())
         val mapController = map!!.controller
         mapController.setZoom(5.0)
         val startPoint = GeoPoint(37.981912,23.727447)
@@ -68,7 +70,9 @@ class MainActivity : AppCompatActivity() {
         val mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         mLocationOverlay.enableMyLocation()
         mLocationOverlay.enableFollowLocation()
+        mLocationOverlay.isOptionsMenuEnabled = true
         map!!.overlays.add(mLocationOverlay)
+
 
         val targetMarker = Marker(map)
 
@@ -89,31 +93,18 @@ class MainActivity : AppCompatActivity() {
 
         })
 
-        map!!.overlays.add(0, mapEventsOverlay);
+        map!!.overlays.add(0, mapEventsOverlay)
+
+        var btCenterMap = findViewById<ImageButton>(R.id.ic_center_map)
+
+        btCenterMap.setOnClickListener {
+            mLocationOverlay.enableFollowLocation()
+        }
 
         val mContext = applicationContext
         locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val isGPSEnabled = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
 
-        var satelliteCount = 0
-
-//        object : GnssStatus.Callback() {
-//            override fun onSatelliteStatusChanged(status: GnssStatus) {
-//                satelliteCount = status.satelliteCount
-//            }
-//
-//            override fun onFirstFix(ttffMillis: Int){
-//                Log.e("FIRST FIX!", "fixed!")
-//            }
-//
-//            override fun onStarted(){
-//                Log.e("STARTED!", "STARTED!")
-//            }
-//
-//            override fun onStopped(){
-//                Log.e("STOPPED!", "STOPPED!")
-//            }
-//        }
         val rxPermissions = RxPermissions(this)
 
         rxPermissions
@@ -142,10 +133,10 @@ class MainActivity : AppCompatActivity() {
                                         Log.e("statusChanged!", "statusChanged!")
                                     }
                                     override fun onProviderEnabled(provider: String) {
-                                        Log.e("STARTEDgpslocationListener!", "STARTEDgpslocationListener!")
+                                        Log.e("STARTEDlocationListener", "STARTEDgpslocationListener!")
                                     }
                                     override fun onProviderDisabled(provider: String) {
-                                        Log.e("STOPPEDonProviderDisabled!", "STOPPEDonProviderDisabled!")
+                                        Log.e("STOPPEDProviderDisabled", "STOPPEDonProviderDisabled!")
                                     }
                                 }
                                 try {
