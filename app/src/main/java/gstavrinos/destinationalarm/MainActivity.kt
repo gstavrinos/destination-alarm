@@ -133,7 +133,7 @@ class MainActivity : AppCompatActivity() {
                                         val results = FloatArray(3)
                                         distanceBetween(loc.latitude, loc.longitude, targetMarker.position.latitude, targetMarker.position.longitude, results)
                                         if (results[0] <= minDist){
-                                            Log.e("onLocationChanged!", "WAKE UP SLEEPY CAT!")
+                                            Toast.makeText(applicationContext, "WAKE UP SLEEPY CAT!", Toast.LENGTH_LONG).show()
                                         }
 
 
