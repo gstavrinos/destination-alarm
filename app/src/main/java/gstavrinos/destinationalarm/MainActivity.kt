@@ -11,6 +11,7 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
+import android.location.Location.distanceBetween
 import android.support.v7.app.AppCompatActivity
 import android.widget.Toast
 import com.tbruyelle.rxpermissions2.RxPermissions
@@ -18,6 +19,9 @@ import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
+import org.osmdroid.views.overlay.Marker
+
+
 
 
 
@@ -31,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private var locationManager: LocationManager? = null
     private var provider:String? = "tmp"
     private var gpsLocationListener:LocationListener? = null
+    private var minDist:Float = 1000.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,15 +70,20 @@ class MainActivity : AppCompatActivity() {
         mLocationOverlay.enableFollowLocation()
         map!!.overlays.add(mLocationOverlay)
 
+        val targetMarker = Marker(map)
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun longPressHelper(p: GeoPoint?): Boolean {
-                Toast.makeText(applicationContext, "LONGPRESS", Toast.LENGTH_SHORT).show();
+                targetMarker.position = p
+                targetMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                map!!.overlays.add(targetMarker)
+                // TODO visualize min distance (minDist)
+                map!!.invalidate()
                 return true
             }
 
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                Toast.makeText(applicationContext, "Tapped", Toast.LENGTH_SHORT).show();
+                Toast.makeText(applicationContext, "Tapped", Toast.LENGTH_SHORT).show()
                 return true
             }
 
@@ -120,7 +130,13 @@ class MainActivity : AppCompatActivity() {
                                 gpsLocationListener = object : LocationListener {
                                     override fun onLocationChanged(loc: Location) {
                                         // TODO here is where you check the user's location
-                                        Log.e("onLocationChanged!", "onLocationChanged!")
+                                        val results = FloatArray(3)
+                                        distanceBetween(loc.latitude, loc.longitude, targetMarker.position.latitude, targetMarker.position.longitude, results)
+                                        if (results[0] <= minDist){
+                                            Log.e("onLocationChanged!", "WAKE UP SLEEPY CAT!")
+                                        }
+
+
                                     }
                                     override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
                                         Log.e("statusChanged!", "statusChanged!")
