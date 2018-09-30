@@ -2,6 +2,7 @@ package gstavrinos.destinationalarm
 
 import android.Manifest
 import android.content.Context
+import android.graphics.Color
 import android.location.*
 import android.os.Bundle
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -12,9 +13,7 @@ import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
 import android.location.Location.distanceBetween
-import android.provider.SyncStateContract
 import android.support.v7.app.AppCompatActivity
-import android.view.View
 import android.widget.Toast
 import com.tbruyelle.rxpermissions2.RxPermissions
 import org.osmdroid.events.MapEventsReceiver
@@ -23,7 +22,7 @@ import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
 import android.widget.ImageButton
-
+import org.osmdroid.views.overlay.Polygon
 
 
 class MainActivity : AppCompatActivity() {
@@ -32,7 +31,8 @@ class MainActivity : AppCompatActivity() {
     private var locationManager: LocationManager? = null
     private var provider:String? = "tmp"
     private var gpsLocationListener:LocationListener? = null
-    private var minDist:Float = 1000.0f
+    private var minDist:Double = 1000.0
+    private var circle:Polygon = Polygon(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +60,8 @@ class MainActivity : AppCompatActivity() {
         map!!.isFlingEnabled = true
         map!!.minZoomLevel = 3.5
 
+        circle = Polygon(map)
+
         Log.e(map!!.minZoomLevel.toString(), map!!.minZoomLevel.toString())
         val mapController = map!!.controller
         mapController.setZoom(5.0)
@@ -78,10 +80,15 @@ class MainActivity : AppCompatActivity() {
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun longPressHelper(p: GeoPoint?): Boolean {
+                map!!.overlays.remove(circle)
                 targetMarker.position = p
                 targetMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                circle.points = Polygon.pointsAsCircle(p, minDist)
+                circle.fillColor = 0x12121212
+                circle.strokeColor = Color.RED
+                circle.strokeWidth = 2.0f
                 map!!.overlays.add(targetMarker)
-                // TODO visualize min distance (minDist)
+                map!!.overlays.add(circle)
                 map!!.invalidate()
                 return true
             }
