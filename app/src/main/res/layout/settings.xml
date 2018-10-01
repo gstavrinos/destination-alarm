@@ -7,13 +7,32 @@
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Default Alarm Radius (in meters)" />
+        android:text="Default Alarm Radius (in meters):" />
+
+    <TextView
+        android:id="@+id/radius_value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
     <SeekBar
-        android:id="@+id/seekBar"
+        android:id="@+id/radius_seekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:max="2000"
+        android:max="1980"
         android:padding="5dp"
         android:progress="20" />
+
+    <Button
+        android:id="@+id/alarm_sound_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="Alarm Sound" />
+
+    <Button
+        android:id="@+id/download_maps_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:text="Download Maps" />
 </LinearLayout>

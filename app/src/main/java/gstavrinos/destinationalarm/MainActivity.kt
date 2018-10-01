@@ -1,8 +1,10 @@
 package gstavrinos.destinationalarm
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.location.*
 import android.os.Bundle
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -13,15 +15,19 @@ import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
 import android.location.Location.distanceBetween
+import android.media.RingtoneManager
 import android.support.v7.app.AppCompatActivity
-import android.widget.Toast
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.*
+import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
-import android.widget.ImageButton
 import org.osmdroid.views.overlay.Polygon
 
 
@@ -33,6 +39,8 @@ class MainActivity : AppCompatActivity() {
     private var gpsLocationListener:LocationListener? = null
     private var minDist:Double = 1000.0
     private var circle:Polygon = Polygon(null)
+    private var check:Boolean = false
+    private val this_ = this
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +67,12 @@ class MainActivity : AppCompatActivity() {
         map!!.isTilesScaledToDpi = true
         map!!.isFlingEnabled = true
         map!!.minZoomLevel = 3.5
+
+        val settingsbutton:ImageButton = findViewById(R.id.settings_button)
+
+        settingsbutton.setOnClickListener {
+            showPopup(it)
+        }
 
         circle = Polygon(map)
 
@@ -90,6 +104,7 @@ class MainActivity : AppCompatActivity() {
                 map!!.overlays.add(targetMarker)
                 map!!.overlays.add(circle)
                 map!!.invalidate()
+                check = true
                 return true
             }
 
@@ -128,10 +143,26 @@ class MainActivity : AppCompatActivity() {
                                 gpsLocationListener = object : LocationListener {
                                     override fun onLocationChanged(loc: Location) {
                                         // TODO here is where you check the user's location
-                                        val results = FloatArray(3)
-                                        distanceBetween(loc.latitude, loc.longitude, targetMarker.position.latitude, targetMarker.position.longitude, results)
-                                        if (results[0] <= minDist){
-                                            Toast.makeText(applicationContext, "WAKE UP SLEEPY CAT!", Toast.LENGTH_LONG).show()
+                                        if(check) {
+                                            val results = FloatArray(3)
+                                            distanceBetween(loc.latitude, loc.longitude, targetMarker.position.latitude, targetMarker.position.longitude, results)
+                                            if (results[0] <= minDist) {
+                                                Toast.makeText(applicationContext, "WAKE UP SLEEPY CAT!", Toast.LENGTH_LONG).show()
+                                                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                                                val r = RingtoneManager.getRingtone(applicationContext, notification)
+                                                r.play()
+                                                map!!.overlays.remove(targetMarker)
+                                                map!!.overlays.remove(circle)
+                                                check = false
+                                                val builder = AlertDialog.Builder(this_)
+                                                builder.setTitle("WAKE UP!")
+                                                .setMessage("Stop alarm?")
+                                                .setPositiveButton(android.R.string.yes) { dialog, _ ->
+                                                    r.stop()
+                                                    dialog.cancel()
+                                                }.setIcon(android.R.drawable.ic_dialog_alert)
+                                                .show()
+                                            }
                                         }
 
 
@@ -179,6 +210,42 @@ class MainActivity : AppCompatActivity() {
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
         map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
+    }
+
+    private fun showPopup(anchorView: View) {
+
+        val popupView:View  = layoutInflater.inflate(R.layout.settings, null)
+
+        val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        popupWindow.isFocusable = true
+
+        val radiusValue = popupView.findViewById<TextView>(R.id.radius_value)
+
+        val seekbar = popupView.findViewById<SeekBar>(R.id.radius_seekBar)
+        seekbar.progress = minDist.toInt()
+        radiusValue.text = minDist.toString()
+
+        seekbar.setOnSeekBarChangeListener(object:OnSeekBarChangeListener {
+
+            override fun onStopTrackingTouch(seekBar:SeekBar) {
+                minDist = seekBar.progress.toDouble() + 20
+            }
+
+            override fun onStartTrackingTouch(seekBar:SeekBar) {}
+
+            override fun onProgressChanged(seekBar:SeekBar, progress:Int,fromUser:Boolean) {
+                radiusValue.text = (progress+20).toString()
+            }
+        })
+
+        val bg = ColorDrawable(0x8033b5e5.toInt())
+
+        popupWindow.setBackgroundDrawable(bg)
+
+        popupWindow.showAtLocation(anchorView, Gravity.CENTER,
+                0, 0)
+
     }
 
 
