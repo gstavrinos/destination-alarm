@@ -18,6 +18,7 @@ import android.location.Location.distanceBetween
 import android.media.RingtoneManager
 import android.support.v7.app.AppCompatActivity
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -37,8 +38,8 @@ class MainActivity : AppCompatActivity() {
     private var locationManager: LocationManager? = null
     private var provider:String? = "tmp"
     private var gpsLocationListener:LocationListener? = null
-    private var minDist:Double = 1000.0
-    private var circle:Polygon = Polygon(null)
+    private var minDist:Int = 1000
+    private var circle = NoTapPolygon(null)
     private var check:Boolean = false
     private val this_ = this
 
@@ -74,7 +75,7 @@ class MainActivity : AppCompatActivity() {
             showPopup(it)
         }
 
-        circle = Polygon(map)
+        circle = NoTapPolygon(map)
 
         Log.e(map!!.minZoomLevel.toString(), map!!.minZoomLevel.toString())
         val mapController = map!!.controller
@@ -97,7 +98,7 @@ class MainActivity : AppCompatActivity() {
                 map!!.overlays.remove(circle)
                 targetMarker.position = p
                 targetMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                circle.points = Polygon.pointsAsCircle(p, minDist)
+                circle.points = Polygon.pointsAsCircle(p, minDist.toDouble())
                 circle.fillColor = 0x12121212
                 circle.strokeColor = Color.RED
                 circle.strokeWidth = 2.0f
@@ -105,6 +106,7 @@ class MainActivity : AppCompatActivity() {
                 map!!.overlays.add(circle)
                 map!!.invalidate()
                 check = true
+                Toast.makeText(applicationContext, "New alarm destination set!", Toast.LENGTH_SHORT).show()
                 return true
             }
 
@@ -223,13 +225,13 @@ class MainActivity : AppCompatActivity() {
         val radiusValue = popupView.findViewById<TextView>(R.id.radius_value)
 
         val seekbar = popupView.findViewById<SeekBar>(R.id.radius_seekBar)
-        seekbar.progress = minDist.toInt()
+        seekbar.progress = minDist
         radiusValue.text = minDist.toString()
 
         seekbar.setOnSeekBarChangeListener(object:OnSeekBarChangeListener {
 
             override fun onStopTrackingTouch(seekBar:SeekBar) {
-                minDist = seekBar.progress.toDouble() + 20
+                minDist = seekBar.progress + 20
             }
 
             override fun onStartTrackingTouch(seekBar:SeekBar) {}
@@ -248,6 +250,12 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    class NoTapPolygon(map:MapView?) : Polygon(map) {
+
+        override fun onSingleTapConfirmed(e: MotionEvent, mapView:MapView ): Boolean {
+            return false
+        }
+    }
 
 
 }
