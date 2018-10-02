@@ -2,7 +2,9 @@ package gstavrinos.destinationalarm
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.Notification
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.*
@@ -15,7 +17,9 @@ import org.osmdroid.util.GeoPoint
 import android.util.Log
 import android.location.Criteria
 import android.location.Location.distanceBetween
+import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.view.Gravity
 import android.view.MotionEvent
@@ -24,12 +28,15 @@ import android.view.ViewGroup
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
+import org.osmdroid.api.IGeoPoint
 import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -42,6 +49,16 @@ class MainActivity : AppCompatActivity() {
     private var circle = NoTapPolygon(null)
     private var check:Boolean = false
     private val this_ = this
+    private var settings:SharedPreferences? = null
+    private var editor: SharedPreferences.Editor? = null
+    private var favourites: MutableSet<String> = TreeSet()
+    private val fav_locs = ArrayList<String>()
+    private val fav_lats = ArrayList<Double>()
+    private val fav_lons = ArrayList<Double>()
+    private var targetMarker:Marker? = null
+    private var mLocationOverlay:MyLocationNewOverlay? = null
+    private var notification: Uri? = null
+    private var ringtone: Ringtone? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +78,24 @@ class MainActivity : AppCompatActivity() {
         //inflate and create the map
         setContentView(R.layout.activity_main)
 
+
+        notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+
+        settings = getSharedPreferences("destinationAlarmU.P", Context.MODE_PRIVATE)
+        editor = settings!!.edit()
+
+        minDist = settings!!.getInt("minDist", 1000)
+
+        favourites = settings!!.getStringSet("favourites", TreeSet())
+        val arraylists = updateFavLocArrayLists(favourites)
+        fav_locs.clear()
+        fav_locs.addAll(arraylists.first)
+        fav_lats.clear()
+        fav_lats.addAll(arraylists.second)
+        fav_lons.clear()
+        fav_lons.addAll(arraylists.third)
+
         map = findViewById(R.id.mapview)
         map!!.setTileSource(TileSourceFactory.MAPNIK)
         map!!.setBuiltInZoomControls(true)
@@ -72,7 +107,13 @@ class MainActivity : AppCompatActivity() {
         val settingsbutton:ImageButton = findViewById(R.id.settings_button)
 
         settingsbutton.setOnClickListener {
-            showPopup(it)
+            showPopupSettings()
+        }
+
+        val favbutton:ImageButton = findViewById(R.id.favourites_button)
+
+        favbutton.setOnClickListener {
+            showPopupFav()
         }
 
         circle = NoTapPolygon(map)
@@ -84,29 +125,18 @@ class MainActivity : AppCompatActivity() {
         mapController.setCenter(startPoint)
 
         // SHOW USER'S LOCATION :)
-        val mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
-        mLocationOverlay.enableMyLocation()
-        mLocationOverlay.enableFollowLocation()
-        mLocationOverlay.isOptionsMenuEnabled = true
+        mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
+        mLocationOverlay!!.enableMyLocation()
+        mLocationOverlay!!.enableFollowLocation()
+        mLocationOverlay!!.isOptionsMenuEnabled = true
         map!!.overlays.add(mLocationOverlay)
 
 
-        val targetMarker = Marker(map)
+        targetMarker = Marker(map)
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun longPressHelper(p: GeoPoint?): Boolean {
-                map!!.overlays.remove(circle)
-                targetMarker.position = p
-                targetMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                circle.points = Polygon.pointsAsCircle(p, minDist.toDouble())
-                circle.fillColor = 0x12121212
-                circle.strokeColor = Color.RED
-                circle.strokeWidth = 2.0f
-                map!!.overlays.add(targetMarker)
-                map!!.overlays.add(circle)
-                map!!.invalidate()
-                check = true
-                Toast.makeText(applicationContext, "New alarm destination set!", Toast.LENGTH_SHORT).show()
+                addTargetMarker(p!!.latitude, p!!.longitude)
                 return true
             }
 
@@ -119,10 +149,10 @@ class MainActivity : AppCompatActivity() {
 
         map!!.overlays.add(0, mapEventsOverlay)
 
-        var btCenterMap = findViewById<ImageButton>(R.id.ic_center_map)
+        val btCenterMap = findViewById<ImageButton>(R.id.ic_center_map)
 
         btCenterMap.setOnClickListener {
-            mLocationOverlay.enableFollowLocation()
+            mLocationOverlay!!.enableFollowLocation()
         }
 
         val mContext = applicationContext
@@ -147,12 +177,10 @@ class MainActivity : AppCompatActivity() {
                                         // TODO here is where you check the user's location
                                         if(check) {
                                             val results = FloatArray(3)
-                                            distanceBetween(loc.latitude, loc.longitude, targetMarker.position.latitude, targetMarker.position.longitude, results)
+                                            distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
                                             if (results[0] <= minDist) {
                                                 Toast.makeText(applicationContext, "WAKE UP SLEEPY CAT!", Toast.LENGTH_LONG).show()
-                                                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                                                val r = RingtoneManager.getRingtone(applicationContext, notification)
-                                                r.play()
+                                                ringtone!!.play()
                                                 map!!.overlays.remove(targetMarker)
                                                 map!!.overlays.remove(circle)
                                                 check = false
@@ -160,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                                                 builder.setTitle("WAKE UP!")
                                                 .setMessage("Stop alarm?")
                                                 .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                                                    r.stop()
+                                                    ringtone!!.stop()
                                                     dialog.cancel()
                                                 }.setIcon(android.R.drawable.ic_dialog_alert)
                                                 .show()
@@ -214,7 +242,12 @@ class MainActivity : AppCompatActivity() {
         map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
     }
 
-    private fun showPopup(anchorView: View) {
+    public override fun onDestroy() {
+        super.onDestroy()
+
+    }
+
+    private fun showPopupSettings() {
 
         val popupView:View  = layoutInflater.inflate(R.layout.settings, null)
 
@@ -232,6 +265,9 @@ class MainActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(seekBar:SeekBar) {
                 minDist = seekBar.progress + 20
+                editor!!.clear()
+                editor!!.putInt("minDist", minDist)
+                editor!!.commit()
             }
 
             override fun onStartTrackingTouch(seekBar:SeekBar) {}
@@ -240,14 +276,165 @@ class MainActivity : AppCompatActivity() {
                 radiusValue.text = (progress+20).toString()
             }
         })
+        val bg = ColorDrawable(0x8033b5e5.toInt())
+        popupWindow.setBackgroundDrawable(bg)
+        popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
+
+    }
+
+    private fun showPopupFavSave() {
+
+        val popupView:View  = layoutInflater.inflate(R.layout.favourites_save, null)
+
+        val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        popupWindow.isFocusable = true
+
+        val savebutton = popupView.findViewById<Button>(R.id.save_button)
+        val cancelbutton = popupView.findViewById<Button>(R.id.cancel_button)
+        val favn = popupView.findViewById<EditText>(R.id.fav_name)
+
+        savebutton.setOnClickListener{
+            if (favn.text.contains("/")){
+                Toast.makeText(this_, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
+            }
+            else if(favn.text.isEmpty()){
+                Toast.makeText(this_, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
+            }
+            else{
+                val stringToAdd = locationStringGenerator(favn.text.toString(), targetMarker)
+                if(fav_locs.contains(favn.text.toString())){
+                    Toast.makeText(this_, "Already in favourites!", Toast.LENGTH_LONG).show()
+                }
+                else{
+                    favourites.add(stringToAdd)
+                    val arraylists = updateFavLocArrayLists(favourites)
+                    fav_locs.clear()
+                    fav_locs.addAll(arraylists.first)
+                    fav_lats.clear()
+                    fav_lats.addAll(arraylists.second)
+                    fav_lons.clear()
+                    fav_lons.addAll(arraylists.third)
+                    editor!!.clear()
+                    editor!!.putStringSet("favourites", favourites)
+                    editor!!.commit()
+                    Toast.makeText(this_, "Location added to favourites!", Toast.LENGTH_LONG).show()
+                    popupWindow.dismiss()
+                }
+
+            }
+        }
+
+        cancelbutton.setOnClickListener{
+            popupWindow.dismiss()
+        }
+
 
         val bg = ColorDrawable(0x8033b5e5.toInt())
-
         popupWindow.setBackgroundDrawable(bg)
+        popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
 
-        popupWindow.showAtLocation(anchorView, Gravity.CENTER,
-                0, 0)
+    }
 
+    private fun showPopupFav() {
+        if(!fav_locs.isEmpty()){
+            val popupView: View = layoutInflater.inflate(R.layout.favourites_list, null)
+
+            val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+            popupWindow.isFocusable = true
+
+            val favlist = popupView.findViewById<ListView>(R.id.fav_list)
+            val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, fav_locs)
+            favlist.adapter = adapter
+
+            favlist.setOnItemLongClickListener{ parent, _, position, _ ->
+                val builder = AlertDialog.Builder(this_)
+                builder.setTitle("WARNING!")
+                        .setMessage("Remove location from favourites?")
+                        .setPositiveButton(android.R.string.yes) { dialog, _ ->
+                            favourites.remove(locationStringGenerator(fav_locs[position], fav_lats[position], fav_lons[position]))
+                            val arraylists = updateFavLocArrayLists(favourites)
+                            fav_locs.clear()
+                            fav_locs.addAll(arraylists.first)
+                            fav_lats.clear()
+                            fav_lats.addAll(arraylists.second)
+                            fav_lons.clear()
+                            fav_lons.addAll(arraylists.third)
+                            adapter.notifyDataSetChanged()
+                            editor!!.clear()
+                            editor!!.putStringSet("favourites", favourites)
+                            editor!!.commit()
+                            Toast.makeText(this_, "Location removed from favourites!", Toast.LENGTH_LONG).show()
+                            dialog.cancel()
+                        }
+                        .setNegativeButton(android.R.string.no) { dialog, _ ->
+                            dialog.cancel()
+                        }
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .show()
+                true
+            }
+
+            favlist.setOnItemClickListener{ _, _, position, _ ->
+                addTargetMarker(fav_lats[position], fav_lons[position])
+                mLocationOverlay!!.disableFollowLocation()
+                map!!.setExpectedCenter(GeoPoint(fav_lats[position], fav_lons[position]))
+                popupWindow.dismiss()
+                true
+            }
+
+
+            val bg = ColorDrawable(0x8033b5e5.toInt())
+            popupWindow.setBackgroundDrawable(bg)
+            popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
+        }
+        else{
+            Toast.makeText(this_, "No favourite locations saved!", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun addTargetMarker(lat:Double, lon:Double){
+        val p = GeoPoint(lat, lon)
+        map!!.overlays.remove(circle)
+        targetMarker!!.position = p
+        val oml = Marker.OnMarkerClickListener { _, _ ->
+            showPopupFavSave()
+            true
+        }
+        targetMarker!!.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        targetMarker!!.setOnMarkerClickListener(oml)
+        circle.points = Polygon.pointsAsCircle(p, minDist.toDouble())
+        circle.fillColor = 0x12121212
+        circle.strokeColor = Color.RED
+        circle.strokeWidth = 2.0f
+        map!!.overlays.add(targetMarker)
+        map!!.overlays.add(circle)
+        map!!.invalidate()
+        check = true
+        Toast.makeText(applicationContext, "New alarm destination set!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun locationStringGenerator(s:String, targetMarker:Marker?) : String{
+        var tmp = s + "/" + targetMarker!!.position.latitude.toString() + "/" + targetMarker!!.position.longitude.toString()
+        return tmp
+    }
+
+    private fun locationStringGenerator(s:String, lat:Double, lon:Double) : String{
+        var tmp = s + "/" + lat.toString() + "/" + lon.toString()
+        return tmp
+    }
+
+    private fun updateFavLocArrayLists(favourites:MutableSet<String>) : Triple<ArrayList<String>, ArrayList<Double>, ArrayList<Double>>{
+        val tmp = ArrayList<String>()
+        val tmp2 = ArrayList<Double>()
+        val tmp3 = ArrayList<Double>()
+        for(f in favourites){
+            tmp.add(f.split("/")[0])
+            tmp2.add(f.split("/")[1].toDouble())
+            tmp3.add(f.split("/")[2].toDouble())
+        }
+        return Triple(tmp, tmp2, tmp3)
     }
 
     class NoTapPolygon(map:MapView?) : Polygon(map) {
@@ -256,6 +443,4 @@ class MainActivity : AppCompatActivity() {
             return false
         }
     }
-
-
 }

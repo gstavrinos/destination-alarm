@@ -13,8 +13,10 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Add ability to stop the alarm!! [DONE]</del>
 * <del>Make the polygon (circle/radius) unclickable [DONE]</del>
 * <del>Fix settings icon</del>
-* Add ability to save favourite target locations
+* <del>Add ability to save favourite target locations [DONE]</del>
+* <del>Make settings permanent</del>
+* <del>Fix non-stop alarm sound!! [DONE]</del>
 * Add ability to select alarm sound
 * Add ability to work with offline map
-* Make settings permanent
-* Fix non-stop alarm sound!!
+* Add ability to search on the map
+* Change star icon to [https://material.io/tools/icons/static/icons/sharp-star_border-black-18.zip]  (maybe??)
