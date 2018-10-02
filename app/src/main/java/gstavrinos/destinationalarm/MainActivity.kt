@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.AlertDialog
 import android.app.Notification
 import android.content.Context
+import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -21,10 +22,7 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.support.v7.app.AppCompatActivity
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
@@ -188,9 +186,11 @@ class MainActivity : AppCompatActivity() {
                                                 builder.setTitle("WAKE UP!")
                                                 .setMessage("Stop alarm?")
                                                 .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                                                    ringtone!!.stop()
                                                     dialog.cancel()
                                                 }.setIcon(android.R.drawable.ic_dialog_alert)
+                                                 .setOnCancelListener{
+                                                    ringtone!!.stop()
+                                                 }
                                                 .show()
                                             }
                                         }
@@ -240,11 +240,8 @@ class MainActivity : AppCompatActivity() {
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
         map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
-    }
-
-    public override fun onDestroy() {
-        super.onDestroy()
-
+        //ringtone!!.stop()
+        //TODO think about what to do when the app is running on the background
     }
 
     private fun showPopupSettings() {

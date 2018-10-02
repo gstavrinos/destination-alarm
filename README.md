@@ -16,6 +16,7 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Add ability to save favourite target locations [DONE]</del>
 * <del>Make settings permanent</del>
 * <del>Fix non-stop alarm sound!! [DONE]</del>
+* Run on background with message on notifications bar
 * Add ability to select alarm sound
 * Add ability to work with offline map
 * Add ability to search on the map
