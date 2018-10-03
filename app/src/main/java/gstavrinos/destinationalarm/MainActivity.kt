@@ -1,11 +1,8 @@
 package gstavrinos.destinationalarm
 
 import android.Manifest
-import android.app.AlertDialog
-import android.app.Notification
-import android.content.Context
-import android.content.DialogInterface
-import android.content.SharedPreferences
+import android.app.*
+import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.*
@@ -15,20 +12,19 @@ import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
-import android.util.Log
-import android.location.Criteria
 import android.location.Location.distanceBetween
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.IBinder
+import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.*
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
-import org.osmdroid.api.IGeoPoint
 import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.util.BoundingBox
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
@@ -37,26 +33,29 @@ import org.osmdroid.views.overlay.Polygon
 import java.util.*
 
 
-class MainActivity : AppCompatActivity() {
+var map: MapView? = null
+var locationManager: LocationManager? = null
+var ringtone: Ringtone? = null
+var targetMarker:Marker? = null
+var minDist:Int = 1000
+var circle = MainActivity.NoTapPolygon(null)
+var check:Boolean = false
+var gpsLocationListener:LocationListener? = null
+var this_:MainActivity? = null
 
-    private var map: MapView? = null
-    private var locationManager: LocationManager? = null
-    private var provider:String? = "tmp"
-    private var gpsLocationListener:LocationListener? = null
-    private var minDist:Int = 1000
-    private var circle = NoTapPolygon(null)
-    private var check:Boolean = false
-    private val this_ = this
+private var rxPermissions:RxPermissions? = null
+class MainActivity : AppCompatActivity(){
     private var settings:SharedPreferences? = null
     private var editor: SharedPreferences.Editor? = null
     private var favourites: MutableSet<String> = TreeSet()
-    private val fav_locs = ArrayList<String>()
-    private val fav_lats = ArrayList<Double>()
-    private val fav_lons = ArrayList<Double>()
-    private var targetMarker:Marker? = null
+    private val favLocs = ArrayList<String>()
+    private val favLats = ArrayList<Double>()
+    private val favLons = ArrayList<Double>()
     private var mLocationOverlay:MyLocationNewOverlay? = null
     private var notification: Uri? = null
-    private var ringtone: Ringtone? = null
+    private var mConnection: ServiceConnection? = null
+    private var notif:Notification? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +65,7 @@ class MainActivity : AppCompatActivity() {
 
         //load/initialize the osmdroid configuration, this can be done
         val ctx = applicationContext
+        this_ = this
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx))
         //setting this before the layout is inflated is a good idea
         //it 'should' ensure that the map has a writable location for the map cache, even without permissions
@@ -76,6 +76,15 @@ class MainActivity : AppCompatActivity() {
         //inflate and create the map
         setContentView(R.layout.activity_main)
 
+        val thisIntent = Intent(ctx, MainActivity::class.java)
+        val contentIntent = PendingIntent.getActivity(ctx, 0, thisIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+        notif = NotificationCompat.Builder(this, "Destination Alarm")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Destination Alarm")
+                .setContentText("Don't worry, the alarm is still active in the background!")
+                .setContentIntent(contentIntent)
+                .setOngoing(true)
+                .build()
 
         notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         ringtone = RingtoneManager.getRingtone(applicationContext, notification)
@@ -87,12 +96,12 @@ class MainActivity : AppCompatActivity() {
 
         favourites = settings!!.getStringSet("favourites", TreeSet())
         val arraylists = updateFavLocArrayLists(favourites)
-        fav_locs.clear()
-        fav_locs.addAll(arraylists.first)
-        fav_lats.clear()
-        fav_lats.addAll(arraylists.second)
-        fav_lons.clear()
-        fav_lons.addAll(arraylists.third)
+        favLocs.clear()
+        favLocs.addAll(arraylists.first)
+        favLats.clear()
+        favLats.addAll(arraylists.second)
+        favLons.clear()
+        favLons.addAll(arraylists.third)
 
         map = findViewById(R.id.mapview)
         map!!.setTileSource(TileSourceFactory.MAPNIK)
@@ -116,7 +125,6 @@ class MainActivity : AppCompatActivity() {
 
         circle = NoTapPolygon(map)
 
-        Log.e(map!!.minZoomLevel.toString(), map!!.minZoomLevel.toString())
         val mapController = map!!.controller
         mapController.setZoom(5.0)
         val startPoint = GeoPoint(37.981912,23.727447)
@@ -153,75 +161,18 @@ class MainActivity : AppCompatActivity() {
             mLocationOverlay!!.enableFollowLocation()
         }
 
-        val mContext = applicationContext
-        locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val isGPSEnabled = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        rxPermissions = RxPermissions(this)
+        mConnection = object : ServiceConnection {
 
-        val rxPermissions = RxPermissions(this)
+            override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            }
 
-        rxPermissions
-                .request(Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.INTERNET,
-                        Manifest.permission.ACCESS_NETWORK_STATE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE) // ask single or multiple permission once
-                .subscribe { granted ->
-                    if (granted) {
-                        if (isGPSEnabled) {
-                            if (locationManager != null) {
-                                provider = locationManager!!.getBestProvider(Criteria(), false)
+            override fun onServiceDisconnected(className: ComponentName) {
+            }
+        }
 
-                                gpsLocationListener = object : LocationListener {
-                                    override fun onLocationChanged(loc: Location) {
-                                        // TODO here is where you check the user's location
-                                        if(check) {
-                                            val results = FloatArray(3)
-                                            distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
-                                            if (results[0] <= minDist) {
-                                                Toast.makeText(applicationContext, "WAKE UP SLEEPY CAT!", Toast.LENGTH_LONG).show()
-                                                ringtone!!.play()
-                                                map!!.overlays.remove(targetMarker)
-                                                map!!.overlays.remove(circle)
-                                                check = false
-                                                val builder = AlertDialog.Builder(this_)
-                                                builder.setTitle("WAKE UP!")
-                                                .setMessage("Stop alarm?")
-                                                .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                                                    dialog.cancel()
-                                                }.setIcon(android.R.drawable.ic_dialog_alert)
-                                                 .setOnCancelListener{
-                                                    ringtone!!.stop()
-                                                 }
-                                                .show()
-                                            }
-                                        }
-
-
-                                    }
-                                    override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
-                                        Log.e("statusChanged!", "statusChanged!")
-                                    }
-                                    override fun onProviderEnabled(provider: String) {
-                                        Log.e("STARTEDlocationListener", "STARTEDgpslocationListener!")
-                                    }
-                                    override fun onProviderDisabled(provider: String) {
-                                        Log.e("STOPPEDProviderDisabled", "STOPPEDonProviderDisabled!")
-                                    }
-                                }
-                                try {
-                                    locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-                                            1, 1f,
-                                            gpsLocationListener)
-                                }
-                                catch (e: SecurityException) {
-                                    // TODO handle this!
-                                }
-                            }
-                        }
-                    } else {
-                        // At least one permission is denied
-                    }
-                }
-
+        val intent = Intent(this, LocationService2::class.java)
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
     }
 
     public override fun onResume() {
@@ -230,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         //if you make changes to the configuration, use
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
-        map!!.onResume() //needed for compass, my location overlays, v6.0.0 and up
+        //map!!.onResume() //needed for compass, my location overlays, v6.0.0 and up
     }
 
     public override fun onPause() {
@@ -239,9 +190,18 @@ class MainActivity : AppCompatActivity() {
         //if you make changes to the configuration, use
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
-        map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
+        //map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
         //ringtone!!.stop()
         //TODO think about what to do when the app is running on the background
+        val notificationManager:NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(0, notif)
+
+        Log.e("asdasdasdas","aaaaaaaaa")
+    }
+
+    public override fun onDestroy() {
+        super.onDestroy()
+        unbindService(mConnection)
     }
 
     private fun showPopupSettings() {
@@ -300,18 +260,18 @@ class MainActivity : AppCompatActivity() {
             }
             else{
                 val stringToAdd = locationStringGenerator(favn.text.toString(), targetMarker)
-                if(fav_locs.contains(favn.text.toString())){
+                if(favLocs.contains(favn.text.toString())){
                     Toast.makeText(this_, "Already in favourites!", Toast.LENGTH_LONG).show()
                 }
                 else{
                     favourites.add(stringToAdd)
                     val arraylists = updateFavLocArrayLists(favourites)
-                    fav_locs.clear()
-                    fav_locs.addAll(arraylists.first)
-                    fav_lats.clear()
-                    fav_lats.addAll(arraylists.second)
-                    fav_lons.clear()
-                    fav_lons.addAll(arraylists.third)
+                    favLocs.clear()
+                    favLocs.addAll(arraylists.first)
+                    favLats.clear()
+                    favLats.addAll(arraylists.second)
+                    favLons.clear()
+                    favLons.addAll(arraylists.third)
                     editor!!.clear()
                     editor!!.putStringSet("favourites", favourites)
                     editor!!.commit()
@@ -334,7 +294,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPopupFav() {
-        if(!fav_locs.isEmpty()){
+        if(!favLocs.isEmpty()){
             val popupView: View = layoutInflater.inflate(R.layout.favourites_list, null)
 
             val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -342,7 +302,7 @@ class MainActivity : AppCompatActivity() {
             popupWindow.isFocusable = true
 
             val favlist = popupView.findViewById<ListView>(R.id.fav_list)
-            val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, fav_locs)
+            val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, favLocs)
             favlist.adapter = adapter
 
             favlist.setOnItemLongClickListener{ parent, _, position, _ ->
@@ -350,14 +310,14 @@ class MainActivity : AppCompatActivity() {
                 builder.setTitle("WARNING!")
                         .setMessage("Remove location from favourites?")
                         .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                            favourites.remove(locationStringGenerator(fav_locs[position], fav_lats[position], fav_lons[position]))
+                            favourites.remove(locationStringGenerator(favLocs[position], favLats[position], favLons[position]))
                             val arraylists = updateFavLocArrayLists(favourites)
-                            fav_locs.clear()
-                            fav_locs.addAll(arraylists.first)
-                            fav_lats.clear()
-                            fav_lats.addAll(arraylists.second)
-                            fav_lons.clear()
-                            fav_lons.addAll(arraylists.third)
+                            favLocs.clear()
+                            favLocs.addAll(arraylists.first)
+                            favLats.clear()
+                            favLats.addAll(arraylists.second)
+                            favLons.clear()
+                            favLons.addAll(arraylists.third)
                             adapter.notifyDataSetChanged()
                             editor!!.clear()
                             editor!!.putStringSet("favourites", favourites)
@@ -374,9 +334,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             favlist.setOnItemClickListener{ _, _, position, _ ->
-                addTargetMarker(fav_lats[position], fav_lons[position])
+                addTargetMarker(favLats[position], favLons[position])
                 mLocationOverlay!!.disableFollowLocation()
-                map!!.setExpectedCenter(GeoPoint(fav_lats[position], fav_lons[position]))
+                map!!.setExpectedCenter(GeoPoint(favLats[position], favLons[position]))
                 popupWindow.dismiss()
                 true
             }
@@ -439,5 +399,68 @@ class MainActivity : AppCompatActivity() {
         override fun onSingleTapConfirmed(e: MotionEvent, mapView:MapView ): Boolean {
             return false
         }
+    }
+
+    class LocationService2 : Service() {
+
+        override fun onBind(intent: Intent?): IBinder? {
+            val mContext = applicationContext
+            locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val isGPSEnabled = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+            rxPermissions!!.request(Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.INTERNET,
+                    Manifest.permission.ACCESS_NETWORK_STATE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) // ask single or multiple permission once
+                    .subscribe { granted ->
+                        if (granted) {
+                            if (isGPSEnabled) {
+                                if (locationManager != null) {
+
+                                    gpsLocationListener = object : LocationListener {
+                                        override fun onLocationChanged(loc: Location) {
+                                            // TODO here is where you check the user's location
+                                            if (check) {
+                                                val results = FloatArray(3)
+                                                distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
+                                                if (results[0] <= minDist) {
+                                                    ringtone!!.play()
+                                                    map!!.overlays.remove(circle)
+                                                    map!!.overlays.remove(targetMarker)
+                                                    check = false
+                                                    val builder = AlertDialog.Builder(this_)
+                                                    builder.setTitle("WAKE UP!")
+                                                            .setMessage("Stop alarm?")
+                                                            .setPositiveButton(android.R.string.yes) { dialog, _ ->
+                                                                dialog.cancel()
+                                                            }.setIcon(android.R.drawable.ic_dialog_alert)
+                                                            .setOnCancelListener {
+                                                                ringtone!!.stop()
+                                                            }
+                                                            .show()
+                                                }
+                                            }
+                                        }
+                                        override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {}
+                                        override fun onProviderEnabled(provider: String) {}
+                                        override fun onProviderDisabled(provider: String) {}
+                                    }
+                                    try {
+                                        locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                                                1, 1f,
+                                                gpsLocationListener)
+                                    } catch (e: SecurityException) {
+                                        // TODO handle this!
+                                    }
+                                }
+                            }
+                        } else {
+                            // At least one permission is denied
+                        }
+                    }
+            return null
+        }
+
+
     }
 }
