@@ -446,6 +446,7 @@ class MainActivity : AppCompatActivity(){
                                                     map!!.overlays.remove(circle)
                                                     map!!.overlays.remove(targetMarker)
                                                     check = false
+                                                    map!!.invalidate()
                                                     val builder = AlertDialog.Builder(this_)
                                                     builder.setTitle("WAKE UP!")
                                                             .setMessage("Stop alarm?")
