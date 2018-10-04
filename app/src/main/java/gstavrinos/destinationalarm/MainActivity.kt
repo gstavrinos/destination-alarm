@@ -16,6 +16,7 @@ import android.location.Location.distanceBetween
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
@@ -42,6 +43,7 @@ var circle = MainActivity.NoTapPolygon(null)
 var check:Boolean = false
 var gpsLocationListener:LocationListener? = null
 var this_:MainActivity? = null
+var notif:Notification? = null
 
 private var rxPermissions:RxPermissions? = null
 class MainActivity : AppCompatActivity(){
@@ -54,7 +56,6 @@ class MainActivity : AppCompatActivity(){
     private var mLocationOverlay:MyLocationNewOverlay? = null
     private var notification: Uri? = null
     private var mConnection: ServiceConnection? = null
-    private var notif:Notification? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,15 +77,21 @@ class MainActivity : AppCompatActivity(){
         //inflate and create the map
         setContentView(R.layout.activity_main)
 
-        val thisIntent = Intent(ctx, MainActivity::class.java)
-        val contentIntent = PendingIntent.getActivity(ctx, 0, thisIntent, PendingIntent.FLAG_UPDATE_CURRENT)
-        notif = NotificationCompat.Builder(this, "Destination Alarm")
+        val pendingIntent: PendingIntent =
+                Intent(this, MainActivity::class.java).let { notificationIntent ->
+                    notificationIntent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_CANCEL_CURRENT)
+                }
+        notif = NotificationCompat.Builder(this, createNotificationChannel())
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Destination Alarm")
                 .setContentText("Don't worry, the alarm is still active in the background!")
-                .setContentIntent(contentIntent)
-                .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .setTicker("Destination Alarm")
                 .build()
+        notif!!.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+
+
 
         notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         ringtone = RingtoneManager.getRingtone(applicationContext, notification)
@@ -190,13 +197,9 @@ class MainActivity : AppCompatActivity(){
         //if you make changes to the configuration, use
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
-        //map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
+        // map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
         //ringtone!!.stop()
         //TODO think about what to do when the app is running on the background
-        val notificationManager:NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(0, notif)
-
-        Log.e("asdasdasdas","aaaaaaaaa")
     }
 
     public override fun onDestroy() {
@@ -394,6 +397,21 @@ class MainActivity : AppCompatActivity(){
         return Triple(tmp, tmp2, tmp3)
     }
 
+    private fun createNotificationChannel(): String{
+        var channelId = "old"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            channelId = "destination_alarm_service"
+            val channelName = "Destination Alarm Service"
+            val chan = NotificationChannel(channelId,
+                    channelName, NotificationManager.IMPORTANCE_NONE)
+            chan.lightColor = Color.BLUE
+            chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            service.createNotificationChannel(chan)
+        }
+        return channelId
+    }
+
     class NoTapPolygon(map:MapView?) : Polygon(map) {
 
         override fun onSingleTapConfirmed(e: MotionEvent, mapView:MapView ): Boolean {
@@ -449,6 +467,7 @@ class MainActivity : AppCompatActivity(){
                                         locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
                                                 1, 1f,
                                                 gpsLocationListener)
+                                        startForeground(16, notif)
                                     } catch (e: SecurityException) {
                                         // TODO handle this!
                                     }

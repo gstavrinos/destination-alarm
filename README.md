@@ -18,9 +18,11 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Fix non-stop alarm sound!! [DONE]</del>
 * <del>Run on background with message on notifications bar (https://developer.android.com/guide/components/bound-services) [DONE]</del>
 * <del>Fix persistent target marker when reaching destination bug [DONE]</del>
-* Notification bar message that app is still running
+* <del>Notification bar message that app is still running [DONE]</del>
 * Add night map & satelite map
 * Add ability to select alarm sound
 * Add ability to work with offline map
 * Add ability to search on the map
 * Change star icon to [https://material.io/tools/icons/static/icons/sharp-star_border-black-18.zip]  (maybe??)
+* Add routine for non permitted permissions!
+* Move the extra classes on different kotlin files, and fix the global variables!
