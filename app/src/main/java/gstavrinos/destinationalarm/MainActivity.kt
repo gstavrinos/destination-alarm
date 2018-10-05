@@ -31,6 +31,7 @@ import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
+import java.io.File
 import java.util.*
 
 
@@ -91,13 +92,19 @@ class MainActivity : AppCompatActivity(){
                 .build()
         notif!!.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
 
-
-
-        notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        ringtone = RingtoneManager.getRingtone(applicationContext, notification)
-
         settings = getSharedPreferences("destinationAlarmU.P", Context.MODE_PRIVATE)
         editor = settings!!.edit()
+
+
+        val snd = settings!!.getString("alarm_sound", RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM).toString())
+        val alarmFile = File(snd)
+        if (!alarmFile.exists()) {
+            notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        }
+        else{
+            notification = Uri.parse(snd)
+        }
+        ringtone = RingtoneManager.getRingtone(applicationContext, notification)
 
         minDist = settings!!.getInt("minDist", 1000)
 
@@ -202,6 +209,22 @@ class MainActivity : AppCompatActivity(){
         //TODO think about what to do when the app is running on the background
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (resultCode == -1 && requestCode == 5) {
+            val tmp:Uri? = data!!.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            if (tmp != null) {
+                notification = tmp
+                editor!!.putString("alarm_sound", notification.toString())
+                editor!!.commit()
+                ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+                Toast.makeText(this_, "New alarm sound set!", Toast.LENGTH_SHORT).show()
+            }
+            else{
+                Toast.makeText(this_, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     public override fun onDestroy() {
         super.onDestroy()
         unbindService(mConnection)
@@ -236,6 +259,20 @@ class MainActivity : AppCompatActivity(){
                 radiusValue.text = (progress+20).toString()
             }
         })
+
+        val alarm_sound_button = popupView.findViewById<Button>(R.id.alarm_sound_button)
+        alarm_sound_button.setOnClickListener(object: View.OnClickListener{
+            override fun onClick(v: View?) {
+                val sndmngt_intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
+                //intent.putExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, notification)
+                startActivityForResult(sndmngt_intent, 5)
+            }
+
+        })
+
+
         val bg = ColorDrawable(0x8033b5e5.toInt())
         popupWindow.setBackgroundDrawable(bg)
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
