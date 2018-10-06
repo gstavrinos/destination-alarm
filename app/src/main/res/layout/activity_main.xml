@@ -47,4 +47,15 @@ android:layout_height="fill_parent"
         android:background="#00ffffff"
         android:cropToPadding="true" />
 
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/search_button"
+        android:src="@android:drawable/ic_menu_search"
+        android:layout_marginBottom="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_below="@+id/settings_button"
+        android:background="#00ffffff"
+        android:cropToPadding="true"/>
+
 </RelativeLayout>

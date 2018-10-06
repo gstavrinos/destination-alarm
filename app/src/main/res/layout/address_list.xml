@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_alignParentTop="true"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/address_search"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:inputType="text"
+        android:maxLines="1"
+        android:ems="10"
+        android:hint="Enter search criteria"/>
+
+
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/search_button"
+        android:src="@android:drawable/ic_menu_search"
+        android:layout_marginBottom="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_toRightOf="@+id/address_search"
+        android:layout_alignBottom="@+id/address_search"
+        android:background="#00ffffff"
+        android:cropToPadding="true"/>
+
+    <ListView
+        android:id="@+id/address_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/address_search"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="-1dp" />
+
+</RelativeLayout>

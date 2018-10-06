@@ -20,11 +20,11 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Fix persistent target marker when reaching destination bug [DONE]</del>
 * <del>Notification bar message that app is still running [DONE]</del>
 * <del>Add ability to select alarm sound [DONE]</del>
-* Add night map & satelite map
+* <del>Set alarm sound intent on previously selected sound [DONE]</del>
+* <del>Add ability to search on the map [DONE]</del>
 * Add ability to work with offline map
-* Add ability to search on the map
 * Change star icon to [https://material.io/tools/icons/static/icons/sharp-star_border-black-18.zip]  (maybe??)
 * Add routine for non permitted permissions!
 * Move the extra classes on different kotlin files, and fix the global variables!
 * Prompt user to enable GPS on startup
-* Set alarm sound intent on previously selected sound
+* <del>Add night map & satelite map [REJECTED]</del>

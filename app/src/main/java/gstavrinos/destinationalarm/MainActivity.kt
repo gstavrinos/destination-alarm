@@ -6,7 +6,6 @@ import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.*
-import android.os.Bundle
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
@@ -16,15 +15,17 @@ import android.location.Location.distanceBetween
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
-import android.os.Build
-import android.os.IBinder
+import android.os.*
 import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.*
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
+import org.osmdroid.bonuspack.location.GeocoderNominatim
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
@@ -32,7 +33,10 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
 import java.io.File
+import java.lang.Exception
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 
 
 var map: MapView? = null
@@ -62,7 +66,6 @@ class MainActivity : AppCompatActivity(){
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         //handle permissions first, before map is created. not depicted here
 
         //load/initialize the osmdroid configuration, this can be done
@@ -129,6 +132,12 @@ class MainActivity : AppCompatActivity(){
 
         settingsbutton.setOnClickListener {
             showPopupSettings()
+        }
+
+        val search_button:ImageButton = findViewById(R.id.search_button)
+
+        search_button.setOnClickListener {
+            showPopupAddressList()
         }
 
         val favbutton:ImageButton = findViewById(R.id.favourites_button)
@@ -206,7 +215,6 @@ class MainActivity : AppCompatActivity(){
         //Configuration.getInstance().save(this, prefs);
         // map!!.onPause()  //needed for compass, my location overlays, v6.0.0 and up
         //ringtone!!.stop()
-        //TODO think about what to do when the app is running on the background
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -264,9 +272,10 @@ class MainActivity : AppCompatActivity(){
         alarm_sound_button.setOnClickListener(object: View.OnClickListener{
             override fun onClick(v: View?) {
                 val sndmngt_intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
-                //intent.putExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, notification)
+                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
+                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
+                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                 startActivityForResult(sndmngt_intent, 5)
             }
 
@@ -391,6 +400,85 @@ class MainActivity : AppCompatActivity(){
         }
     }
 
+    private fun showPopupAddressList() {
+        val popupView: View = layoutInflater.inflate(R.layout.address_list, null)
+
+        val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+        popupWindow.isFocusable = true
+
+        val addresses = ArrayList<Address>()
+        val addressesString = ArrayList<String>()
+        val addressList = popupView.findViewById<ListView>(R.id.address_list)
+        val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, addressesString)
+        addressList.adapter = adapter
+
+        val search_button = popupView.findViewById<ImageButton>(R.id.search_button)
+        search_button.isEnabled = false
+
+        val address_search = popupView.findViewById<EditText>(R.id.address_search)
+
+        address_search.addTextChangedListener(object: TextWatcher{
+            override fun afterTextChanged(s: Editable?) {}
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                search_button.isEnabled = !s!!.trim().isEmpty()
+            }
+
+        })
+
+        search_button.setOnClickListener(object: View.OnClickListener{
+            override fun onClick(v: View?) {
+                Log.e("dkhskdfsdfsdf",search_button.isEnabled.toString())
+                search_button.isEnabled = false
+                try {
+                    val searchAddressTask = ReverseGeocodingAsyncTask(address_search.text.toString(), 50)
+                    addresses.clear()
+                    addressesString.clear()
+                    adapter.notifyDataSetChanged()
+                    searchAddressTask.execute()
+                    addresses.addAll(searchAddressTask.get(10, TimeUnit.SECONDS))
+                }
+                catch(e:Exception){
+                    Toast.makeText(this_, "Connection problem! Please check your internet access!", Toast.LENGTH_LONG).show()
+                }
+
+                if (addresses.isEmpty()){
+                    Toast.makeText(this_, "No such location found!", Toast.LENGTH_LONG).show()
+                }
+                else{
+                    for(i in addresses){
+                        var nextAddress = ""
+                        for(j in 0..i.maxAddressLineIndex){
+                            nextAddress += i.getAddressLine(j) + ", "
+                        }
+                        nextAddress = nextAddress.removeRange(nextAddress.length-2, nextAddress.length)
+                        addressesString.add(nextAddress)
+                        nextAddress = ""
+                    }
+                    adapter.notifyDataSetChanged()
+                }
+                search_button.isEnabled = true
+            }
+
+        })
+
+        addressList.setOnItemClickListener{ _, _, position, _ ->
+            addTargetMarker(addresses[position].latitude, addresses[position].longitude)
+            mLocationOverlay!!.disableFollowLocation()
+            map!!.setExpectedCenter(GeoPoint(addresses[position].latitude, addresses[position].longitude))
+            popupWindow.dismiss()
+            true
+        }
+
+
+        val bg = ColorDrawable(0x8033b5e5.toInt())
+        popupWindow.setBackgroundDrawable(bg)
+        popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.TOP, 0, 0)
+    }
+
     private fun addTargetMarker(lat:Double, lon:Double){
         val p = GeoPoint(lat, lon)
         map!!.overlays.remove(circle)
@@ -474,7 +562,6 @@ class MainActivity : AppCompatActivity(){
 
                                     gpsLocationListener = object : LocationListener {
                                         override fun onLocationChanged(loc: Location) {
-                                            // TODO here is where you check the user's location
                                             if (check) {
                                                 val results = FloatArray(3)
                                                 distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
@@ -517,7 +604,25 @@ class MainActivity : AppCompatActivity(){
                     }
             return null
         }
-
-
     }
+
+    private class ReverseGeocodingAsyncTask(name:String, m:Int) : AsyncTask<String, Int, ArrayList<Address>>() {
+
+        var name:String = name
+        var maxRes:Int = m
+
+        override fun doInBackground(vararg params: String?) : ArrayList<Address>{
+            var foundAddresses = ArrayList<Address>()
+            val geocoderNominatim = GeocoderNominatim("name=George Stavrinos,email=stavrinosgeo@gmail.com,app=destination_alarm")
+            geocoderNominatim.setService("https://nominatim.openstreetmap.org/")
+            try{
+                    foundAddresses.addAll(geocoderNominatim.getFromLocationName(name, maxRes))
+                    return foundAddresses
+                } catch(e:Exception){
+
+                }
+                return foundAddresses
+            }
+        }
+
 }
