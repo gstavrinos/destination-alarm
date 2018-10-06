@@ -82,8 +82,6 @@ class MainActivity : AppCompatActivity(){
         //inflate and create the map
         setContentView(R.layout.activity_main)
 
-        this.volumeControlStream = AudioManager.STREAM_ALARM
-
         val pendingIntent: PendingIntent =
                 Intent(this, MainActivity::class.java).let { notificationIntent ->
                     notificationIntent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -114,12 +112,18 @@ class MainActivity : AppCompatActivity(){
         ringtone = RingtoneManager.getRingtone(applicationContext, notification)
         ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
 
+        this.volumeControlStream = AudioManager.STREAM_ALARM
+
         minDist = settings!!.getInt("minDist", 1000)
 
 
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        audioManager!!.mode = AudioManager.MODE_NORMAL
-        audioManager!!.isSpeakerphoneOn = settings!!.getBoolean("useSpeaker", true)
+//        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+//        audioManager!!.mode = AudioManager.MODE_NORMAL
+//        Log.e("asdasdasdasdasdddddddddddddd", audioManager!!.isBluetoothScoOn.toString())
+//        audioManager!!.isBluetoothScoOn = false
+//        audioManager!!.isSpeakerphoneOn = true
+//
+//        audioManager!!.isSpeakerphoneOn = settings!!.getBoolean("useSpeaker", true)
 
         vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
@@ -306,7 +310,7 @@ class MainActivity : AppCompatActivity(){
             override fun onCheckedChanged(group: RadioGroup?, checkedId: Int) {
                 editor!!.putBoolean("useSpeaker", checkedId == R.id.speaker_radio)
                 editor!!.commit()
-                audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
+                //audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
             }
 
         })
