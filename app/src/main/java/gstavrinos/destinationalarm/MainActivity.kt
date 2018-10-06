@@ -12,8 +12,7 @@ import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import android.location.Location.distanceBetween
-import android.media.Ringtone
-import android.media.RingtoneManager
+import android.media.*
 import android.net.Uri
 import android.os.*
 import android.support.v4.app.NotificationCompat
@@ -61,6 +60,7 @@ class MainActivity : AppCompatActivity(){
     private var mLocationOverlay:MyLocationNewOverlay? = null
     private var notification: Uri? = null
     private var mConnection: ServiceConnection? = null
+    private var audioManager: AudioManager? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,6 +80,8 @@ class MainActivity : AppCompatActivity(){
 
         //inflate and create the map
         setContentView(R.layout.activity_main)
+
+        this.volumeControlStream = AudioManager.STREAM_ALARM
 
         val pendingIntent: PendingIntent =
                 Intent(this, MainActivity::class.java).let { notificationIntent ->
@@ -107,9 +109,20 @@ class MainActivity : AppCompatActivity(){
         else{
             notification = Uri.parse(snd)
         }
+
         ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+        ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
 
         minDist = settings!!.getInt("minDist", 1000)
+
+
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager!!.mode = AudioManager.MODE_NORMAL
+        audioManager!!.isSpeakerphoneOn = settings!!.getBoolean("useSpeaker", true)
+
+//        if(!audioManager!!.isSpeakerphoneOn){
+//            audioManager.set
+//        }
 
         favourites = settings!!.getStringSet("favourites", TreeSet())
         val arraylists = updateFavLocArrayLists(favourites)
@@ -225,6 +238,7 @@ class MainActivity : AppCompatActivity(){
                 editor!!.putString("alarm_sound", notification.toString())
                 editor!!.commit()
                 ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+                ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
                 Toast.makeText(this_, "New alarm sound set!", Toast.LENGTH_SHORT).show()
             }
             else{
@@ -277,6 +291,23 @@ class MainActivity : AppCompatActivity(){
                 sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
                 sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                 startActivityForResult(sndmngt_intent, 5)
+            }
+
+        })
+
+        val alarm_sound_selection: RadioGroup = popupView.findViewById(R.id.sound_source_selection)
+        if(settings!!.getBoolean("useSpeaker", true)){
+            alarm_sound_selection.check((R.id.speaker_radio))
+        }
+        else{
+            alarm_sound_selection.check((R.id.headphones_radio))
+        }
+
+        alarm_sound_selection.setOnCheckedChangeListener(object: RadioGroup.OnCheckedChangeListener{
+            override fun onCheckedChanged(group: RadioGroup?, checkedId: Int) {
+                editor!!.putBoolean("useSpeaker", checkedId == R.id.speaker_radio)
+                editor!!.commit()
+                audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
             }
 
         })
@@ -508,6 +539,16 @@ class MainActivity : AppCompatActivity(){
     private fun locationStringGenerator(s:String, lat:Double, lon:Double) : String{
         var tmp = s + "/" + lat.toString() + "/" + lon.toString()
         return tmp
+    }
+
+    private fun isHeadphonesPlugged(): Boolean{
+        val audioDevices: Array<AudioDeviceInfo> = audioManager!!.getDevices(AudioManager.GET_DEVICES_ALL)
+        for(deviceInfo in audioDevices){
+            if(deviceInfo.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || deviceInfo.type == AudioDeviceInfo.TYPE_WIRED_HEADSET){
+                return true
+            }
+        }
+        return false
     }
 
     private fun updateFavLocArrayLists(favourites:MutableSet<String>) : Triple<ArrayList<String>, ArrayList<Double>, ArrayList<Double>>{
