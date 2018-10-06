@@ -48,6 +48,7 @@ var check:Boolean = false
 var gpsLocationListener:LocationListener? = null
 var this_:MainActivity? = null
 var notif:Notification? = null
+var vib: Vibrator? = null
 
 private var rxPermissions:RxPermissions? = null
 class MainActivity : AppCompatActivity(){
@@ -120,9 +121,7 @@ class MainActivity : AppCompatActivity(){
         audioManager!!.mode = AudioManager.MODE_NORMAL
         audioManager!!.isSpeakerphoneOn = settings!!.getBoolean("useSpeaker", true)
 
-//        if(!audioManager!!.isSpeakerphoneOn){
-//            audioManager.set
-//        }
+        vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
         favourites = settings!!.getStringSet("favourites", TreeSet())
         val arraylists = updateFavLocArrayLists(favourites)
@@ -587,6 +586,16 @@ class MainActivity : AppCompatActivity(){
 
     class LocationService2 : Service() {
 
+
+        private fun vibrateIt(){
+            if (Build.VERSION.SDK_INT >= 26) {
+                vib!!.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 1000), 1))
+            }
+            else {
+                vib!!.vibrate(360000000) // 100 hours xD
+            }
+        }
+
         override fun onBind(intent: Intent?): IBinder? {
             val mContext = applicationContext
             locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -608,6 +617,7 @@ class MainActivity : AppCompatActivity(){
                                                 distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
                                                 if (results[0] <= minDist) {
                                                     ringtone!!.play()
+                                                    vibrateIt()
                                                     map!!.overlays.remove(circle)
                                                     map!!.overlays.remove(targetMarker)
                                                     check = false
@@ -620,6 +630,7 @@ class MainActivity : AppCompatActivity(){
                                                             }.setIcon(android.R.drawable.ic_dialog_alert)
                                                             .setOnCancelListener {
                                                                 ringtone!!.stop()
+                                                                vib!!.cancel()
                                                             }
                                                             .show()
                                                 }

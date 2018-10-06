@@ -35,4 +35,26 @@
         android:layout_height="wrap_content"
         android:padding="5dp"
         android:text="Download Maps" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Select alarm sound source:"
+        android:layout_gravity="center"/>
+
+    <RadioGroup
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/sound_source_selection">
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/speaker_radio"
+            android:text="Sound from speakers (even if headphones are connected)"/>
+        <RadioButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/headphones_radio"
+            android:text="Sound from headphones (only when connected)"/>
+    </RadioGroup>
 </LinearLayout>
