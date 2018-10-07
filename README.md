@@ -27,7 +27,7 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Add ability to work with offline map [DONE]</del>
 * <del>Add routine for non permitted permissions! [DONE]</del>
 * <del>Prompt user to enable GPS on startup [DONE]</del>
-* Change to bigger, clearer icons
+* <del>Change to bigger, clearer icons [DONE]<del>
 * Change the appearance of the fragments
 * Add Application launcher and notification icons
 * Move the extra classes on different kotlin files, and fix the global variables!
@@ -35,3 +35,12 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Do something with the volume [IT'S THE USER'S PROBLEM]</del>
 * <del>Allow the app to chooce between alarm and notifications (for speakers vs headphones use) [GREW SICK OF IT]</del>
 * <del>Add night map & satelite map [REJECTED]</del>
+
+##### Icons
+wake up by Chinnaking from the Noun Project
+Star by y. onaldi from the Noun Project
+search map by b farias from the Noun Project
+setting by Vectorstall from the Noun Project
+Download Map by Ben Davis from the Noun Project
+Download by Kimmi Studio from the Noun Project
+current location by Balam Palma from the Noun Project

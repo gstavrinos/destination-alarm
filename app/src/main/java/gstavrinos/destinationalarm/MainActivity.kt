@@ -5,6 +5,7 @@ import android.app.*
 import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.location.*
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
@@ -181,6 +182,7 @@ class MainActivity : AppCompatActivity(){
         map!!.overlays.add(mLocationOverlay)
 
         targetMarker = Marker(map)
+        targetMarker!!.icon =  resources.getDrawable(R.drawable.map_marker_icon, this_!!.theme)
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun longPressHelper(p: GeoPoint?): Boolean {
@@ -496,7 +498,7 @@ class MainActivity : AppCompatActivity(){
             popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
         }
         else{
-            Toast.makeText(this_, "No favourite locations saved!", Toast.LENGTH_LONG).show()
+            Toast.makeText(this_, "No favourite locations saved. Click on a marker to save it!", Toast.LENGTH_LONG).show()
         }
     }
 

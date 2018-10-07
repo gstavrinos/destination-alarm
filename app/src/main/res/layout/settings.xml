@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:padding="5dp"
             android:layout_marginTop="10dp"
-            android:text="Clean map cache"
+            android:text="Clear map cache"
             android:textColor="@android:color/holo_red_dark"/>
     </RadioGroup>
 </LinearLayout>
