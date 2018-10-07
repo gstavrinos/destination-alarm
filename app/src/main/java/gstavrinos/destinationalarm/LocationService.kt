@@ -17,7 +17,7 @@ class LocationService : Service() {
 
         val disposable = rxPermissions!!.request(Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.INTERNET,
-                Manifest.permission.ACCESS_NETWORK_STATE) // ask single or multiple permission once
+                Manifest.permission.ACCESS_NETWORK_STATE)
                 .subscribe { granted ->
                     if (granted) {
                         if (isGPSEnabled) {
@@ -62,15 +62,18 @@ class LocationService : Service() {
                                             1, 1f,
                                             gpsLocationListener)
                                     startForeground(16, notif)
-                                } catch (e: SecurityException) {
+                                }
+                                catch (e: SecurityException) {
                                     // TODO handle this!
                                 }
                             }
-                        } else {
+                        }
+                        else {
                             superDirty!!.showGPSDialog()
 
                         }
-                    } else {
+                    }
+                    else {
                         val builder = AlertDialog.Builder(superDirty)
                         builder.setTitle("PERMISSIONS ERROR!")
                                 .setMessage("The app cannot work without the required permissions. Exiting...")

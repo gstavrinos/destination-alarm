@@ -17,6 +17,7 @@ import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
@@ -52,7 +53,7 @@ class MainActivity : AppCompatActivity(){
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         superDirty = this
-        Configuration.getInstance().load(applicationContext, PreferenceManager.getDefaultSharedPreferences(applicationContext))
+        Configuration.getInstance().load(superDirty, PreferenceManager.getDefaultSharedPreferences(superDirty))
         setContentView(R.layout.activity_main)
 
         val pendingIntent: PendingIntent =
@@ -78,7 +79,7 @@ class MainActivity : AppCompatActivity(){
         val alarmFile = File(snd)
         notification = if (!alarmFile.exists()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else Uri.parse(snd)
 
-        ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+        ringtone = RingtoneManager.getRingtone(superDirty, notification)
         ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
 
         this.volumeControlStream = AudioManager.STREAM_ALARM
@@ -197,18 +198,17 @@ class MainActivity : AppCompatActivity(){
         val serviceIntent = Intent(this, LocationService().javaClass)
         bindService(serviceIntent, mConnection!!, Context.BIND_AUTO_CREATE)
 
-        val download_map_button = findViewById<ImageButton>(R.id.download_maps_button)
-        download_map_button.setOnClickListener(object:View.OnClickListener{
-            override fun onClick(v: View?) {
-                Configuration.getInstance().expirationOverrideDuration = 31557600000000 // 1000 years!
-                val cacheManager = CacheManager(map)
-                val zoomMin = map!!.zoomLevelDouble.toInt()
-                var zoomMax = map!!.maxZoomLevel.toInt() - 10
-                zoomMax = if (zoomMax < zoomMin) zoomMin else zoomMax
-                cacheManager.downloadAreaAsync(applicationContext, map!!.boundingBox, zoomMin, zoomMax)
-            }
-
-        })
+        val downloadMapButton = findViewById<ImageButton>(R.id.download_maps_button)
+        downloadMapButton.setOnClickListener {
+            Configuration.getInstance().expirationOverrideDuration = 31557600000000 // 1000 years!
+            Log.e("DOWNLOAD BUTTON", "DOWNLOAD BUTTON")
+            val cacheManager = CacheManager(map)
+            val zoomMin = map!!.zoomLevelDouble.toInt()
+            var zoomMax = map!!.maxZoomLevel.toInt() - 10
+            zoomMax = if (zoomMax < zoomMin) zoomMin else zoomMax
+            val t = cacheManager.downloadAreaAsync(superDirty, map!!.boundingBox, zoomMin, zoomMax)
+            Log.e("STATUSSSSSSS",t.status.toString())
+        }
     }
 
     public override fun onResume() {
@@ -237,17 +237,20 @@ class MainActivity : AppCompatActivity(){
                 notification = tmp
                 editor!!.putString("alarm_sound", notification.toString())
                 editor!!.apply()
-                ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+                ringtone = RingtoneManager.getRingtone(superDirty, notification)
                 ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
-                Toast.makeText(applicationContext, "New alarm sound set!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(superDirty, "New alarm sound set!", Toast.LENGTH_SHORT).show()
             }
             else{
-                Toast.makeText(applicationContext, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
+                Toast.makeText(superDirty, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
             }
         }
         if(requestCode == 1){
             if(!locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)){
                 showGPSDialog()
+            }
+            else{
+                recreate()
             }
         }
     }
@@ -314,7 +317,7 @@ class MainActivity : AppCompatActivity(){
         deleteCacheButton.setOnClickListener(object: View.OnClickListener{
             override fun onClick(v: View?) {
                 map!!.getTileProvider().clearTileCache()
-                Toast.makeText(applicationContext, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
+                Toast.makeText(superDirty, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
             }
 
         })
@@ -370,15 +373,15 @@ class MainActivity : AppCompatActivity(){
 
         savebutton.setOnClickListener{
             if (favn.text.contains("/")){
-                Toast.makeText(applicationContext, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
+                Toast.makeText(superDirty, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
             }
             else if(favn.text.isEmpty()){
-                Toast.makeText(applicationContext, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
+                Toast.makeText(superDirty, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
             }
             else{
                 val stringToAdd = locationStringGenerator(favn.text.toString(), targetMarker)
                 if(favLocs.contains(favn.text.toString())){
-                    Toast.makeText(applicationContext, "Already in favourites!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(superDirty, "Already in favourites!", Toast.LENGTH_LONG).show()
                 }
                 else{
                     favourites!!.add(stringToAdd)
@@ -392,7 +395,7 @@ class MainActivity : AppCompatActivity(){
                     editor!!.clear()
                     editor!!.putStringSet("favourites", favourites)
                     editor!!.apply()
-                    Toast.makeText(applicationContext, "Location added to favourites!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(superDirty, "Location added to favourites!", Toast.LENGTH_LONG).show()
                     popupWindow.dismiss()
                 }
 
@@ -419,11 +422,11 @@ class MainActivity : AppCompatActivity(){
             popupWindow.isFocusable = true
 
             val favlist = popupView.findViewById<ListView>(R.id.fav_list)
-            val adapter = ArrayAdapter<String>(applicationContext,android.R.layout.simple_list_item_1, favLocs)
+            val adapter = ArrayAdapter<String>(superDirty,android.R.layout.simple_list_item_1, favLocs)
             favlist.adapter = adapter
 
             favlist.setOnItemLongClickListener{ _, _, position, _ ->
-                val builder = AlertDialog.Builder(applicationContext)
+                val builder = AlertDialog.Builder(superDirty)
                 builder.setTitle("WARNING!")
                         .setMessage("Remove location from favourites?")
                         .setPositiveButton(android.R.string.yes) { dialog, _ ->
@@ -439,7 +442,7 @@ class MainActivity : AppCompatActivity(){
                             editor!!.clear()
                             editor!!.putStringSet("favourites", favourites)
                             editor!!.apply()
-                            Toast.makeText(applicationContext, "Location removed from favourites!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(superDirty, "Location removed from favourites!", Toast.LENGTH_LONG).show()
                             dialog.cancel()
                         }
                         .setNegativeButton(android.R.string.no) { dialog, _ ->
@@ -463,7 +466,7 @@ class MainActivity : AppCompatActivity(){
             popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
         }
         else{
-            Toast.makeText(applicationContext, "No favourite locations saved. Click on a marker to save it!", Toast.LENGTH_LONG).show()
+            Toast.makeText(superDirty, "No favourite locations saved. Click on a marker to save it!", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -477,7 +480,7 @@ class MainActivity : AppCompatActivity(){
         val addresses = ArrayList<Address>()
         val addressesString = ArrayList<String>()
         val addressList = popupView.findViewById<ListView>(R.id.address_list)
-        val adapter = ArrayAdapter<String>(applicationContext,android.R.layout.simple_list_item_1, addressesString)
+        val adapter = ArrayAdapter<String>(superDirty,android.R.layout.simple_list_item_1, addressesString)
         addressList.adapter = adapter
 
         val searchButton = popupView.findViewById<ImageButton>(R.id.search_button)
@@ -510,36 +513,45 @@ class MainActivity : AppCompatActivity(){
                 addressesString.clear()
                 adapter.notifyDataSetChanged()
                 thread {
-                    val searchAddressTask = ReverseGeocodingAsyncTask(addressSearch.text.toString(), 50)
-                    searchAddressTask.execute()
-                    addresses.addAll(searchAddressTask.get(30, TimeUnit.SECONDS))
-                    runOnUiThread {
-                        progressThingy.visibility = View.GONE
-                    }
-                    if (addresses.isEmpty()) {
+                    try {
+                        val searchAddressTask = ReverseGeocodingAsyncTask(addressSearch.text.toString(), 50)
+                        searchAddressTask.execute()
+                        addresses.addAll(searchAddressTask.get(30, TimeUnit.SECONDS))
                         runOnUiThread {
-                            Toast.makeText(applicationContext, "No locations found! Check your criteria and your internet connection", Toast.LENGTH_LONG).show()
+                            progressThingy.visibility = View.GONE
                         }
-                    } else {
-                        for (i in addresses) {
-                            var nextAddress = ""
-                            for (j in 0..i.maxAddressLineIndex) {
-                                nextAddress += i.getAddressLine(j) + ", "
+                        if (addresses.isEmpty()) {
+                            runOnUiThread {
+                                Toast.makeText(superDirty, "No locations found! Check your criteria and your internet connection", Toast.LENGTH_LONG).show()
                             }
-                            nextAddress = nextAddress.removeRange(nextAddress.length - 2, nextAddress.length)
-                            addressesString.add(nextAddress)
+                        } else {
+                            for (i in addresses) {
+                                var nextAddress = ""
+                                for (j in 0..i.maxAddressLineIndex) {
+                                    nextAddress += i.getAddressLine(j) + ", "
+                                }
+                                nextAddress = nextAddress.removeRange(nextAddress.length - 2, nextAddress.length)
+                                addressesString.add(nextAddress)
+                            }
+                            runOnUiThread {
+                                adapter.notifyDataSetChanged()
+                            }
                         }
                         runOnUiThread {
-                            adapter.notifyDataSetChanged()
+                            searchButton.isEnabled = true
                         }
                     }
-                    runOnUiThread {
-                        searchButton.isEnabled = true
+                    catch(e:Exception){
+                        runOnUiThread {
+                            progressThingy.visibility = View.GONE
+                            Toast.makeText(superDirty, "Connection problem! The server took too long to respond. Please check your Internet connection.", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             }
             catch(e:Exception){
-                Toast.makeText(applicationContext, "Connection problem! The server took too long to respond. Please check your Internet connection.", Toast.LENGTH_LONG).show()
+                progressThingy.visibility = View.GONE
+                Toast.makeText(superDirty, "Connection problem! The server took too long to respond. Please check your Internet connection.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -557,7 +569,7 @@ class MainActivity : AppCompatActivity(){
     }
 
     fun showGPSDialog(){
-        val builder = AlertDialog.Builder(applicationContext)
+        val builder = AlertDialog.Builder(superDirty)
         builder.setTitle("GPS not enabled!")
                 .setMessage("The app requires GPS in order to work properly. Press ok to continue to settings to enable GPS or cancel to exit.")
                 .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -591,7 +603,7 @@ class MainActivity : AppCompatActivity(){
         map!!.overlays.add(circle)
         map!!.invalidate()
         check = true
-        Toast.makeText(applicationContext, "New alarm destination set!", Toast.LENGTH_SHORT).show()
+        Toast.makeText(superDirty, "New alarm destination set!", Toast.LENGTH_SHORT).show()
     }
 
     private fun locationStringGenerator(s:String, targetMarker:Marker?) : String{
