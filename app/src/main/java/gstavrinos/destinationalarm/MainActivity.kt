@@ -49,6 +49,7 @@ var gpsLocationListener:LocationListener? = null
 var this_:MainActivity? = null
 var notif:Notification? = null
 var vib: Vibrator? = null
+var vibrating = false
 
 private var rxPermissions:RxPermissions? = null
 class MainActivity : AppCompatActivity(){
@@ -210,6 +211,17 @@ class MainActivity : AppCompatActivity(){
             }
         }
 
+        val vibrateReceiver = object: BroadcastReceiver() {
+            override fun onReceive(context:Context, intent:Intent) {
+                if(intent.action == Intent.ACTION_SCREEN_OFF && vibrating) {
+                    vibrateIt()
+                }
+            }
+        }
+
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        registerReceiver(vibrateReceiver, filter)
+
         val intent = Intent(this, LocationService2::class.java)
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
     }
@@ -253,6 +265,17 @@ class MainActivity : AppCompatActivity(){
     public override fun onDestroy() {
         super.onDestroy()
         unbindService(mConnection)
+    }
+
+
+    fun vibrateIt(){
+        vibrating = true
+        if (Build.VERSION.SDK_INT >= 26) {
+            vib!!.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 1000), 1))
+        }
+        else {
+            vib!!.vibrate(360000000) // 100 hours xD
+        }
     }
 
     private fun showPopupSettings() {
@@ -590,16 +613,6 @@ class MainActivity : AppCompatActivity(){
 
     class LocationService2 : Service() {
 
-
-        private fun vibrateIt(){
-            if (Build.VERSION.SDK_INT >= 26) {
-                vib!!.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 1000), 1))
-            }
-            else {
-                vib!!.vibrate(360000000) // 100 hours xD
-            }
-        }
-
         override fun onBind(intent: Intent?): IBinder? {
             val mContext = applicationContext
             locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -621,7 +634,7 @@ class MainActivity : AppCompatActivity(){
                                                 distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
                                                 if (results[0] <= minDist) {
                                                     ringtone!!.play()
-                                                    vibrateIt()
+                                                    this_!!.vibrateIt()
                                                     map!!.overlays.remove(circle)
                                                     map!!.overlays.remove(targetMarker)
                                                     check = false
@@ -635,6 +648,7 @@ class MainActivity : AppCompatActivity(){
                                                             .setOnCancelListener {
                                                                 ringtone!!.stop()
                                                                 vib!!.cancel()
+                                                                vibrating = false
                                                             }
                                                             .show()
                                                 }
@@ -679,6 +693,6 @@ class MainActivity : AppCompatActivity(){
                 }
                 return foundAddresses
             }
-        }
+    }
 
 }
