@@ -26,6 +26,7 @@ import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
 import org.osmdroid.bonuspack.location.GeocoderNominatim
 import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
@@ -144,6 +145,7 @@ class MainActivity : AppCompatActivity(){
         map!!.isTilesScaledToDpi = true
         map!!.isFlingEnabled = true
         map!!.minZoomLevel = 3.5
+        map!!.setUseDataConnection(!settings!!.getBoolean("offline_mode", false))
 
         val settingsbutton:ImageButton = findViewById(R.id.settings_button)
 
@@ -177,7 +179,6 @@ class MainActivity : AppCompatActivity(){
         mLocationOverlay!!.isOptionsMenuEnabled = true
         map!!.overlays.add(mLocationOverlay)
 
-
         targetMarker = Marker(map)
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
@@ -187,7 +188,6 @@ class MainActivity : AppCompatActivity(){
             }
 
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                Toast.makeText(applicationContext, "Tapped", Toast.LENGTH_SHORT).show()
                 return true
             }
 
@@ -224,6 +224,19 @@ class MainActivity : AppCompatActivity(){
 
         val intent = Intent(this, LocationService2::class.java)
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
+
+        val download_map_button = findViewById<ImageButton>(R.id.download_maps_button)
+        download_map_button.setOnClickListener(object:View.OnClickListener{
+            override fun onClick(v: View?) {
+                Configuration.getInstance().expirationOverrideDuration = 31557600000000 // 1000 years!
+                val cacheManager = CacheManager(map)
+                val zoomMin = map!!.zoomLevelDouble.toInt()
+                var zoomMax = map!!.maxZoomLevel.toInt() - 10
+                zoomMax = if (zoomMax < zoomMin) zoomMin else zoomMax
+                cacheManager.downloadAreaAsync(this_, map!!.boundingBox, zoomMin, zoomMax)
+            }
+
+        })
     }
 
     public override fun onResume() {
@@ -306,6 +319,26 @@ class MainActivity : AppCompatActivity(){
             override fun onProgressChanged(seekBar:SeekBar, progress:Int,fromUser:Boolean) {
                 radiusValue.text = (progress+20).toString()
             }
+        })
+
+        val offline_selection = popupView.findViewById<CheckBox>(R.id.offline_selection)
+        offline_selection.isChecked = settings!!.getBoolean("offline_mode", false)
+        offline_selection.setOnClickListener(object: View.OnClickListener{
+            override fun onClick(v: View?) {
+                map!!.setUseDataConnection(!offline_selection.isChecked)
+                editor!!.putBoolean("offline_mode", offline_selection.isChecked)
+                editor!!.commit()
+            }
+
+        })
+
+        val delete_cache_button = popupView.findViewById<Button>(R.id.clean_cache_button)
+        delete_cache_button.setOnClickListener(object: View.OnClickListener{
+            override fun onClick(v: View?) {
+                map!!.getTileProvider().clearTileCache()
+                Toast.makeText(this_, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
+            }
+
         })
 
         val alarm_sound_button = popupView.findViewById<Button>(R.id.alarm_sound_button)

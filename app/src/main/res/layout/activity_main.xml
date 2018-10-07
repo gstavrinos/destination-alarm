@@ -18,9 +18,10 @@ android:layout_height="fill_parent"
         android:id="@+id/ic_center_map"
         android:src="@android:drawable/ic_menu_mylocation"
         android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="10dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginBottom = "10dp"
+        android:layout_marginTop = "10dp"
+        android:layout_marginStart = "10dp"
         android:background="#00ffffff"
         android:cropToPadding="true" />
 
@@ -29,21 +30,10 @@ android:layout_height="fill_parent"
         android:layout_height="wrap_content"
         android:id="@+id/settings_button"
         android:src="@android:drawable/ic_menu_manage"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="10dp"
-        android:layout_marginStart="10dp"
-        android:background="#00ffffff"
-        android:cropToPadding="true" />
-
-    <ImageButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/favourites_button"
-        android:src="@android:drawable/btn_star_big_off"
-        android:layout_marginBottom="10dp"
-        android:layout_marginStart="10dp"
-        android:layout_alignParentBottom="true"
+        android:layout_below="@+id/ic_center_map"
+        android:layout_marginBottom = "10dp"
+        android:layout_marginTop = "10dp"
+        android:layout_marginStart = "10dp"
         android:background="#00ffffff"
         android:cropToPadding="true" />
 
@@ -52,10 +42,35 @@ android:layout_height="fill_parent"
         android:layout_height="wrap_content"
         android:id="@+id/search_button"
         android:src="@android:drawable/ic_menu_search"
-        android:layout_marginBottom="10dp"
-        android:layout_marginStart="10dp"
+        android:layout_marginBottom = "10dp"
+        android:layout_marginTop = "10dp"
+        android:layout_marginStart = "10dp"
         android:layout_below="@+id/settings_button"
         android:background="#00ffffff"
         android:cropToPadding="true"/>
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/favourites_button"
+        android:src="@android:drawable/btn_star_big_off"
+        android:layout_marginBottom = "10dp"
+        android:layout_marginTop = "10dp"
+        android:layout_marginStart = "10dp"
+        android:layout_below="@+id/search_button"
+        android:background="#00ffffff"
+        android:cropToPadding="true" />
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/download_maps_button"
+        android:src="@android:drawable/stat_sys_download_done"
+        android:layout_marginBottom = "10dp"
+        android:layout_marginTop = "10dp"
+        android:layout_marginStart = "10dp"
+        android:layout_below="@+id/favourites_button"
+        android:background="#00ffffff"
+        android:cropToPadding="true" />
 
 </RelativeLayout>

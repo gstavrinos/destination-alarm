@@ -24,11 +24,13 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Add ability to search on the map [DONE]</del>
 * <del>Allow the app to use the alarm volume instead of the notifications one [DONE]</del>
 * <del>Add vibration on alarm [DONE]</del>
-* Do something with the volume
-* Add ability to work with offline map
-* Change star icon to [https://material.io/tools/icons/static/icons/sharp-star_border-black-18.zip]  (maybe??)
+* <del>Add ability to work with offline map [DONE]</del>
 * Add routine for non permitted permissions!
-* Move the extra classes on different kotlin files, and fix the global variables!
 * Prompt user to enable GPS on startup
+* Change to bigger clearer icons
+* Change the appearance of the fragments
+* Add Application launcher and notification icons
+* Move the extra classes on different kotlin files, and fix the global variables!
+* <del>Do something with the volume [IT'S THE USER'S PROBLEM]</del>
 * <del>Allow the app to chooce between alarm and notifications (for speakers vs headphones use) [GREW SICK OF IT]</del>
 * <del>Add night map & satelite map [REJECTED]</del>
