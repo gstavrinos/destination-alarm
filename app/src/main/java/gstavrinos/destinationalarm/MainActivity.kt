@@ -15,6 +15,8 @@ import android.location.Location.distanceBetween
 import android.media.*
 import android.net.Uri
 import android.os.*
+import android.support.v4.app.ActivityCompat
+import android.support.v4.app.ActivityCompat.startActivityForResult
 import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
 import android.text.Editable
@@ -172,7 +174,6 @@ class MainActivity : AppCompatActivity(){
         val startPoint = GeoPoint(37.981912,23.727447)
         mapController.setCenter(startPoint)
 
-        // SHOW USER'S LOCATION :)
         mLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         mLocationOverlay!!.enableMyLocation()
         mLocationOverlay!!.enableFollowLocation()
@@ -218,6 +219,10 @@ class MainActivity : AppCompatActivity(){
                 }
             }
         }
+
+        Configuration.getInstance().userAgentValue = BuildConfig.APPLICATION_ID
+        Configuration.getInstance().tileDownloadThreads = 12
+        Configuration.getInstance().tileFileSystemCacheMaxBytes = 10000000000 // 10TB
 
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         registerReceiver(vibrateReceiver, filter)
@@ -271,6 +276,11 @@ class MainActivity : AppCompatActivity(){
             }
             else{
                 Toast.makeText(this_, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
+            }
+        }
+        if(requestCode == 1){
+            if(!locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+                showGPSDialog()
             }
         }
     }
@@ -569,6 +579,23 @@ class MainActivity : AppCompatActivity(){
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.TOP, 0, 0)
     }
 
+    private fun showGPSDialog(){
+        val builder = AlertDialog.Builder(this_)
+        builder.setTitle("GPS not enabled!")
+                .setMessage("The app requires GPS in order to work properly. Press ok to continue to settings to enable GPS or cancel to exit.")
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    val locIntent = Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                    startActivityForResult(locIntent, 1)
+                }
+                .setNegativeButton(android.R.string.no) { _, _ ->
+                    this_!!.finish()
+                }.setIcon(android.R.drawable.ic_dialog_alert)
+                .setOnCancelListener {
+                    builder.show()
+                }
+                .show()
+    }
+
     private fun addTargetMarker(lat:Double, lon:Double){
         val p = GeoPoint(lat, lon)
         map!!.overlays.remove(circle)
@@ -653,8 +680,7 @@ class MainActivity : AppCompatActivity(){
 
             rxPermissions!!.request(Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.INTERNET,
-                    Manifest.permission.ACCESS_NETWORK_STATE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE) // ask single or multiple permission once
+                    Manifest.permission.ACCESS_NETWORK_STATE) // ask single or multiple permission once
                     .subscribe { granted ->
                         if (granted) {
                             if (isGPSEnabled) {
@@ -689,7 +715,9 @@ class MainActivity : AppCompatActivity(){
                                         }
                                         override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {}
                                         override fun onProviderEnabled(provider: String) {}
-                                        override fun onProviderDisabled(provider: String) {}
+                                        override fun onProviderDisabled(provider: String) {
+                                            this_!!.showGPSDialog()
+                                        }
                                     }
                                     try {
                                         locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
@@ -701,8 +729,21 @@ class MainActivity : AppCompatActivity(){
                                     }
                                 }
                             }
+                            else{
+                                this_!!.showGPSDialog()
+
+                            }
                         } else {
-                            // At least one permission is denied
+                            val builder = AlertDialog.Builder(this_)
+                            builder.setTitle("PERMISSIONS ERROR!")
+                                    .setMessage("The app cannot work without the required permissions. Exiting...")
+                                    .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                                        this_!!.finish()
+                                    }.setIcon(android.R.drawable.ic_dialog_alert)
+                                    .setOnCancelListener {
+                                        this_!!.finish()
+                                    }
+                                    .show()
                         }
                     }
             return null
