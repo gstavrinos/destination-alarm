@@ -384,7 +384,7 @@ class MainActivity : AppCompatActivity(){
         })
 
 
-        val bg = ColorDrawable(0x8033b5e5.toInt())
+        val bg = ColorDrawable(0xCC333333.toInt())
         popupWindow.setBackgroundDrawable(bg)
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
 
@@ -438,7 +438,7 @@ class MainActivity : AppCompatActivity(){
         }
 
 
-        val bg = ColorDrawable(0x8033b5e5.toInt())
+        val bg = ColorDrawable(0xCC333333.toInt())
         popupWindow.setBackgroundDrawable(bg)
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
 
@@ -493,7 +493,7 @@ class MainActivity : AppCompatActivity(){
             }
 
 
-            val bg = ColorDrawable(0x8033b5e5.toInt())
+            val bg = ColorDrawable(0xCC333333.toInt())
             popupWindow.setBackgroundDrawable(bg)
             popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
         }
@@ -576,7 +576,7 @@ class MainActivity : AppCompatActivity(){
         }
 
 
-        val bg = ColorDrawable(0x8033b5e5.toInt())
+        val bg = ColorDrawable(0xCC333333.toInt())
         popupWindow.setBackgroundDrawable(bg)
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.TOP, 0, 0)
     }

@@ -5,14 +5,18 @@
 
     <TextView
         android:id="@+id/textView"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Default Alarm Radius (in meters):" />
+        android:text="Default Alarm Radius (in meters):"
+        android:textAppearance="@style/Base.TextAppearance.AppCompat.Subhead"
+        android:layout_gravity="center"/>
 
     <TextView
         android:id="@+id/radius_value"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/Base.TextAppearance.AppCompat.Subhead"
+        android:layout_gravity="center"/>
 
     <SeekBar
         android:id="@+id/radius_seekBar"
@@ -24,46 +28,56 @@
 
     <CheckBox
         android:id="@+id/offline_selection"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="5dp"
-        android:text="Offline map mode" />
+        android:text="Offline map mode"
+        android:layout_gravity="center"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Select alarm sound source:"
-        android:layout_gravity="center"/>
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="5dp"
+        android:textAppearance="@style/Base.TextAppearance.AppCompat.Subhead"/>
 
     <RadioGroup
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/sound_source_selection">
+        android:id="@+id/sound_source_selection"
+        android:layout_gravity="center"
+        android:layout_marginEnd="5dp">
         <RadioButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/speaker_radio"
-            android:text="Sound from speakers (even if headphones are connected)"/>
+            android:text="Sound from speakers (even if headphones are connected)"
+            android:layout_gravity="center"/>
         <RadioButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/headphones_radio"
-            android:text="Sound from headphones (only when connected)"/>
+            android:text="Sound from headphones (only when connected)"
+            android:layout_gravity="center"/>
 
         <Button
             android:id="@+id/alarm_sound_button"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="5dp"
-            android:text="Alarm Sound" />
+            android:text="Alarm Sound"
+            android:layout_marginTop="10dp"
+            android:layout_gravity="center"/>
 
         <Button
             android:id="@+id/clean_cache_button"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="5dp"
             android:layout_marginTop="10dp"
             android:text="Clear map cache"
+            android:layout_gravity="center"
             android:textColor="@android:color/holo_red_dark"/>
     </RadioGroup>
 </LinearLayout>

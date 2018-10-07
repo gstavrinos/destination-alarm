@@ -28,7 +28,7 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Add routine for non permitted permissions! [DONE]</del>
 * <del>Prompt user to enable GPS on startup [DONE]</del>
 * <del>Change to bigger, clearer icons [DONE]<del>
-* Change the appearance of the fragments
+* <del>Change the appearance of the fragments [DONE]</del>
 * Add Application launcher and notification icons
 * Move the extra classes on different kotlin files, and fix the global variables!
 * Prompt user for internet access when in online mode?? Maybe not...
