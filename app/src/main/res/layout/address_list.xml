@@ -20,6 +20,15 @@
         android:ems="10"
         android:hint="Enter search criteria"/>
 
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/address_search"
+        android:id="@+id/progressThingy"
+        android:layout_marginTop="10dp"
+        android:layout_centerHorizontal="true"
+        android:indeterminate="true" />
+
 
 
     <ImageButton

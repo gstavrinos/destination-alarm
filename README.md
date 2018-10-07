@@ -30,8 +30,9 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Change to bigger, clearer icons [DONE]<del>
 * <del>Change the appearance of the fragments [DONE]</del>
 * <del>Add Application launcher and notification icons [DONE]</del>
-* Move the extra classes on different kotlin files, and fix the global variables!
-* Prompt user for internet access when in online mode?? Maybe not...
+* <del>Move the extra classes on different kotlin files, and fix the global variables! [DONE]</del>
+* <del>Add progress bar while searching the server for addresses and run on a new thread[DONE]</del>
+* <del>Prompt user for internet access when in online mode?? Maybe not... [MAYBE NOT WON]</del>
 * <del>Do something with the volume [IT'S THE USER'S PROBLEM]</del>
 * <del>Allow the app to chooce between alarm and notifications (for speakers vs headphones use) [GREW SICK OF IT]</del>
 * <del>Add night map & satelite map [REJECTED]</del>

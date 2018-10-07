@@ -27,7 +27,7 @@
         </activity>
 
         <service
-            android:name=".MainActivity$LocationService2"
+            android:name=".LocationService"
             android:exported="false"/>
 
     </application>

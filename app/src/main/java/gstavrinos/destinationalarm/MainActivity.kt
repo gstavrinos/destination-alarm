@@ -1,33 +1,27 @@
 package gstavrinos.destinationalarm
 
-import android.Manifest
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.*
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.Drawable
 import android.location.*
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.views.MapView
 import android.preference.PreferenceManager
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
-import android.location.Location.distanceBetween
 import android.media.*
 import android.net.Uri
 import android.os.*
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.ActivityCompat.startActivityForResult
 import android.support.v4.app.NotificationCompat
 import android.support.v7.app.AppCompatActivity
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
 import com.tbruyelle.rxpermissions2.RxPermissions
-import org.osmdroid.bonuspack.location.GeocoderNominatim
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -40,26 +34,12 @@ import java.lang.Exception
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
+import kotlin.concurrent.thread
 
-
-var map: MapView? = null
-var locationManager: LocationManager? = null
-var ringtone: Ringtone? = null
-var targetMarker:Marker? = null
-var minDist:Int = 1000
-var circle = MainActivity.NoTapPolygon(null)
-var check:Boolean = false
-var gpsLocationListener:LocationListener? = null
-var this_:MainActivity? = null
-var notif:Notification? = null
-var vib: Vibrator? = null
-var vibrating = false
-
-private var rxPermissions:RxPermissions? = null
 class MainActivity : AppCompatActivity(){
     private var settings:SharedPreferences? = null
     private var editor: SharedPreferences.Editor? = null
-    private var favourites: MutableSet<String> = TreeSet()
+    private var favourites: MutableSet<String>? = TreeSet()
     private val favLocs = ArrayList<String>()
     private val favLats = ArrayList<Double>()
     private val favLons = ArrayList<Double>()
@@ -68,23 +48,11 @@ class MainActivity : AppCompatActivity(){
     private var mConnection: ServiceConnection? = null
     private var audioManager: AudioManager? = null
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        //handle permissions first, before map is created. not depicted here
-
-        //load/initialize the osmdroid configuration, this can be done
-        val ctx = applicationContext
-        this_ = this
-        Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx))
-        //setting this before the layout is inflated is a good idea
-        //it 'should' ensure that the map has a writable location for the map cache, even without permissions
-        //if no tiles are displayed, you can try overriding the cache path using Configuration.getInstance().setCachePath
-        //see also StorageUtils
-        //note, the load method also sets the HTTP User Agent to your application's package name, abusing osm's tile servers will get you banned based on this string
-
-        //inflate and create the map
+        superDirty = this
+        Configuration.getInstance().load(applicationContext, PreferenceManager.getDefaultSharedPreferences(applicationContext))
         setContentView(R.layout.activity_main)
 
         val pendingIntent: PendingIntent =
@@ -102,17 +70,13 @@ class MainActivity : AppCompatActivity(){
         notif!!.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
 
         settings = getSharedPreferences("destinationAlarmU.P", Context.MODE_PRIVATE)
+        @SuppressLint("CommitPrefEdits")
         editor = settings!!.edit()
 
 
         val snd = settings!!.getString("alarm_sound", RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM).toString())
         val alarmFile = File(snd)
-        if (!alarmFile.exists()) {
-            notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        }
-        else{
-            notification = Uri.parse(snd)
-        }
+        notification = if (!alarmFile.exists()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else Uri.parse(snd)
 
         ringtone = RingtoneManager.getRingtone(applicationContext, notification)
         ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
@@ -133,7 +97,7 @@ class MainActivity : AppCompatActivity(){
         vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
         favourites = settings!!.getStringSet("favourites", TreeSet())
-        val arraylists = updateFavLocArrayLists(favourites)
+        val arraylists = updateFavLocArrayLists(favourites!!)
         favLocs.clear()
         favLocs.addAll(arraylists.first)
         favLats.clear()
@@ -156,9 +120,9 @@ class MainActivity : AppCompatActivity(){
             showPopupSettings()
         }
 
-        val search_button:ImageButton = findViewById(R.id.search_button)
+        val searchButton:ImageButton = findViewById(R.id.search_button)
 
-        search_button.setOnClickListener {
+        searchButton.setOnClickListener {
             showPopupAddressList()
         }
 
@@ -182,11 +146,11 @@ class MainActivity : AppCompatActivity(){
         map!!.overlays.add(mLocationOverlay)
 
         targetMarker = Marker(map)
-        targetMarker!!.icon =  resources.getDrawable(R.drawable.map_marker_icon, this_!!.theme)
+        targetMarker!!.icon =  resources.getDrawable(R.drawable.map_marker_icon, this.theme)
 
         val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
             override fun longPressHelper(p: GeoPoint?): Boolean {
-                addTargetMarker(p!!.latitude, p!!.longitude)
+                addTargetMarker(p!!.latitude, p.longitude)
                 return true
             }
 
@@ -229,8 +193,9 @@ class MainActivity : AppCompatActivity(){
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         registerReceiver(vibrateReceiver, filter)
 
-        val intent = Intent(this, LocationService2::class.java)
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
+        locationManager = applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val serviceIntent = Intent(this, LocationService().javaClass)
+        bindService(serviceIntent, mConnection!!, Context.BIND_AUTO_CREATE)
 
         val download_map_button = findViewById<ImageButton>(R.id.download_maps_button)
         download_map_button.setOnClickListener(object:View.OnClickListener{
@@ -240,7 +205,7 @@ class MainActivity : AppCompatActivity(){
                 val zoomMin = map!!.zoomLevelDouble.toInt()
                 var zoomMax = map!!.maxZoomLevel.toInt() - 10
                 zoomMax = if (zoomMax < zoomMin) zoomMin else zoomMax
-                cacheManager.downloadAreaAsync(this_, map!!.boundingBox, zoomMin, zoomMax)
+                cacheManager.downloadAreaAsync(applicationContext, map!!.boundingBox, zoomMin, zoomMax)
             }
 
         })
@@ -271,13 +236,13 @@ class MainActivity : AppCompatActivity(){
             if (tmp != null) {
                 notification = tmp
                 editor!!.putString("alarm_sound", notification.toString())
-                editor!!.commit()
+                editor!!.apply()
                 ringtone = RingtoneManager.getRingtone(applicationContext, notification)
                 ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
-                Toast.makeText(this_, "New alarm sound set!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, "New alarm sound set!", Toast.LENGTH_SHORT).show()
             }
             else{
-                Toast.makeText(this_, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, "The sound of the alarm cannot be set to none!", Toast.LENGTH_LONG).show()
             }
         }
         if(requestCode == 1){
@@ -289,7 +254,7 @@ class MainActivity : AppCompatActivity(){
 
     public override fun onDestroy() {
         super.onDestroy()
-        unbindService(mConnection)
+        unbindService(mConnection!!)
     }
 
 
@@ -299,6 +264,7 @@ class MainActivity : AppCompatActivity(){
             vib!!.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 1000), 1))
         }
         else {
+            @Suppress("DEPRECATION")
             vib!!.vibrate(360000000) // 100 hours xD
         }
     }
@@ -323,7 +289,7 @@ class MainActivity : AppCompatActivity(){
                 minDist = seekBar.progress + 20
                 editor!!.clear()
                 editor!!.putInt("minDist", minDist)
-                editor!!.commit()
+                editor!!.apply()
             }
 
             override fun onStartTrackingTouch(seekBar:SeekBar) {}
@@ -333,51 +299,51 @@ class MainActivity : AppCompatActivity(){
             }
         })
 
-        val offline_selection = popupView.findViewById<CheckBox>(R.id.offline_selection)
-        offline_selection.isChecked = settings!!.getBoolean("offline_mode", false)
-        offline_selection.setOnClickListener(object: View.OnClickListener{
+        val offlineSelection = popupView.findViewById<CheckBox>(R.id.offline_selection)
+        offlineSelection.isChecked = settings!!.getBoolean("offline_mode", false)
+        offlineSelection.setOnClickListener(object: View.OnClickListener{
             override fun onClick(v: View?) {
-                map!!.setUseDataConnection(!offline_selection.isChecked)
-                editor!!.putBoolean("offline_mode", offline_selection.isChecked)
-                editor!!.commit()
+                map!!.setUseDataConnection(!offlineSelection.isChecked)
+                editor!!.putBoolean("offline_mode", offlineSelection.isChecked)
+                editor!!.apply()
             }
 
         })
 
-        val delete_cache_button = popupView.findViewById<Button>(R.id.clean_cache_button)
-        delete_cache_button.setOnClickListener(object: View.OnClickListener{
+        val deleteCacheButton = popupView.findViewById<Button>(R.id.clean_cache_button)
+        deleteCacheButton.setOnClickListener(object: View.OnClickListener{
             override fun onClick(v: View?) {
                 map!!.getTileProvider().clearTileCache()
-                Toast.makeText(this_, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
             }
 
         })
 
-        val alarm_sound_button = popupView.findViewById<Button>(R.id.alarm_sound_button)
-        alarm_sound_button.setOnClickListener(object: View.OnClickListener{
+        val alarmSoundButton = popupView.findViewById<Button>(R.id.alarm_sound_button)
+        alarmSoundButton.setOnClickListener(object: View.OnClickListener{
             override fun onClick(v: View?) {
-                val sndmngt_intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
-                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
-                sndmngt_intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                startActivityForResult(sndmngt_intent, 5)
+                val sndmngtIntent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
+                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
+                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                startActivityForResult(sndmngtIntent, 5)
             }
 
         })
 
-        val alarm_sound_selection: RadioGroup = popupView.findViewById(R.id.sound_source_selection)
+        val alarmSoundSelection: RadioGroup = popupView.findViewById(R.id.sound_source_selection)
         if(settings!!.getBoolean("useSpeaker", true)){
-            alarm_sound_selection.check((R.id.speaker_radio))
+            alarmSoundSelection.check((R.id.speaker_radio))
         }
         else{
-            alarm_sound_selection.check((R.id.headphones_radio))
+            alarmSoundSelection.check((R.id.headphones_radio))
         }
 
-        alarm_sound_selection.setOnCheckedChangeListener(object: RadioGroup.OnCheckedChangeListener{
+        alarmSoundSelection.setOnCheckedChangeListener(object: RadioGroup.OnCheckedChangeListener{
             override fun onCheckedChanged(group: RadioGroup?, checkedId: Int) {
                 editor!!.putBoolean("useSpeaker", checkedId == R.id.speaker_radio)
-                editor!!.commit()
+                editor!!.apply()
                 //audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
             }
 
@@ -404,19 +370,19 @@ class MainActivity : AppCompatActivity(){
 
         savebutton.setOnClickListener{
             if (favn.text.contains("/")){
-                Toast.makeText(this_, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
             }
             else if(favn.text.isEmpty()){
-                Toast.makeText(this_, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
+                Toast.makeText(applicationContext, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
             }
             else{
                 val stringToAdd = locationStringGenerator(favn.text.toString(), targetMarker)
                 if(favLocs.contains(favn.text.toString())){
-                    Toast.makeText(this_, "Already in favourites!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(applicationContext, "Already in favourites!", Toast.LENGTH_LONG).show()
                 }
                 else{
-                    favourites.add(stringToAdd)
-                    val arraylists = updateFavLocArrayLists(favourites)
+                    favourites!!.add(stringToAdd)
+                    val arraylists = updateFavLocArrayLists(favourites!!)
                     favLocs.clear()
                     favLocs.addAll(arraylists.first)
                     favLats.clear()
@@ -425,8 +391,8 @@ class MainActivity : AppCompatActivity(){
                     favLons.addAll(arraylists.third)
                     editor!!.clear()
                     editor!!.putStringSet("favourites", favourites)
-                    editor!!.commit()
-                    Toast.makeText(this_, "Location added to favourites!", Toast.LENGTH_LONG).show()
+                    editor!!.apply()
+                    Toast.makeText(applicationContext, "Location added to favourites!", Toast.LENGTH_LONG).show()
                     popupWindow.dismiss()
                 }
 
@@ -453,16 +419,16 @@ class MainActivity : AppCompatActivity(){
             popupWindow.isFocusable = true
 
             val favlist = popupView.findViewById<ListView>(R.id.fav_list)
-            val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, favLocs)
+            val adapter = ArrayAdapter<String>(applicationContext,android.R.layout.simple_list_item_1, favLocs)
             favlist.adapter = adapter
 
-            favlist.setOnItemLongClickListener{ parent, _, position, _ ->
-                val builder = AlertDialog.Builder(this_)
+            favlist.setOnItemLongClickListener{ _, _, position, _ ->
+                val builder = AlertDialog.Builder(applicationContext)
                 builder.setTitle("WARNING!")
                         .setMessage("Remove location from favourites?")
                         .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                            favourites.remove(locationStringGenerator(favLocs[position], favLats[position], favLons[position]))
-                            val arraylists = updateFavLocArrayLists(favourites)
+                            favourites!!.remove(locationStringGenerator(favLocs[position], favLats[position], favLons[position]))
+                            val arraylists = updateFavLocArrayLists(favourites!!)
                             favLocs.clear()
                             favLocs.addAll(arraylists.first)
                             favLats.clear()
@@ -472,8 +438,8 @@ class MainActivity : AppCompatActivity(){
                             adapter.notifyDataSetChanged()
                             editor!!.clear()
                             editor!!.putStringSet("favourites", favourites)
-                            editor!!.commit()
-                            Toast.makeText(this_, "Location removed from favourites!", Toast.LENGTH_LONG).show()
+                            editor!!.apply()
+                            Toast.makeText(applicationContext, "Location removed from favourites!", Toast.LENGTH_LONG).show()
                             dialog.cancel()
                         }
                         .setNegativeButton(android.R.string.no) { dialog, _ ->
@@ -489,7 +455,6 @@ class MainActivity : AppCompatActivity(){
                 mLocationOverlay!!.disableFollowLocation()
                 map!!.setExpectedCenter(GeoPoint(favLats[position], favLons[position]))
                 popupWindow.dismiss()
-                true
             }
 
 
@@ -498,7 +463,7 @@ class MainActivity : AppCompatActivity(){
             popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.CENTER, 0, 0)
         }
         else{
-            Toast.makeText(this_, "No favourite locations saved. Click on a marker to save it!", Toast.LENGTH_LONG).show()
+            Toast.makeText(applicationContext, "No favourite locations saved. Click on a marker to save it!", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -512,67 +477,77 @@ class MainActivity : AppCompatActivity(){
         val addresses = ArrayList<Address>()
         val addressesString = ArrayList<String>()
         val addressList = popupView.findViewById<ListView>(R.id.address_list)
-        val adapter = ArrayAdapter<String>(this_,android.R.layout.simple_list_item_1, addressesString)
+        val adapter = ArrayAdapter<String>(applicationContext,android.R.layout.simple_list_item_1, addressesString)
         addressList.adapter = adapter
 
-        val search_button = popupView.findViewById<ImageButton>(R.id.search_button)
-        search_button.isEnabled = false
+        val searchButton = popupView.findViewById<ImageButton>(R.id.search_button)
+        searchButton.isEnabled = false
 
-        val address_search = popupView.findViewById<EditText>(R.id.address_search)
+        val addressSearch = popupView.findViewById<EditText>(R.id.address_search)
 
-        address_search.addTextChangedListener(object: TextWatcher{
+        addressSearch.addTextChangedListener(object: TextWatcher{
             override fun afterTextChanged(s: Editable?) {}
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                search_button.isEnabled = !s!!.trim().isEmpty()
+                searchButton.isEnabled = !s!!.trim().isEmpty()
             }
 
         })
 
-        search_button.setOnClickListener(object: View.OnClickListener{
-            override fun onClick(v: View?) {
-                Log.e("dkhskdfsdfsdf",search_button.isEnabled.toString())
-                search_button.isEnabled = false
-                try {
-                    val searchAddressTask = ReverseGeocodingAsyncTask(address_search.text.toString(), 50)
-                    addresses.clear()
-                    addressesString.clear()
-                    adapter.notifyDataSetChanged()
+        val progressThingy = popupView.findViewById<ProgressBar>(R.id.progressThingy)
+        progressThingy.visibility = View.GONE
+
+        searchButton.setOnClickListener {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(addressSearch.windowToken, 0)
+            searchButton.isEnabled = false
+            addressSearch.clearFocus()
+            progressThingy.visibility = View.VISIBLE
+            try {
+                addresses.clear()
+                addressesString.clear()
+                adapter.notifyDataSetChanged()
+                thread {
+                    val searchAddressTask = ReverseGeocodingAsyncTask(addressSearch.text.toString(), 50)
                     searchAddressTask.execute()
-                    addresses.addAll(searchAddressTask.get(10, TimeUnit.SECONDS))
-                }
-                catch(e:Exception){
-                    Toast.makeText(this_, "Connection problem! Please check your internet access!", Toast.LENGTH_LONG).show()
-                }
-
-                if (addresses.isEmpty()){
-                    Toast.makeText(this_, "No such location found!", Toast.LENGTH_LONG).show()
-                }
-                else{
-                    for(i in addresses){
-                        var nextAddress = ""
-                        for(j in 0..i.maxAddressLineIndex){
-                            nextAddress += i.getAddressLine(j) + ", "
-                        }
-                        nextAddress = nextAddress.removeRange(nextAddress.length-2, nextAddress.length)
-                        addressesString.add(nextAddress)
-                        nextAddress = ""
+                    addresses.addAll(searchAddressTask.get(30, TimeUnit.SECONDS))
+                    runOnUiThread {
+                        progressThingy.visibility = View.GONE
                     }
-                    adapter.notifyDataSetChanged()
+                    if (addresses.isEmpty()) {
+                        runOnUiThread {
+                            Toast.makeText(applicationContext, "No locations found! Check your criteria and your internet connection", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        for (i in addresses) {
+                            var nextAddress = ""
+                            for (j in 0..i.maxAddressLineIndex) {
+                                nextAddress += i.getAddressLine(j) + ", "
+                            }
+                            nextAddress = nextAddress.removeRange(nextAddress.length - 2, nextAddress.length)
+                            addressesString.add(nextAddress)
+                        }
+                        runOnUiThread {
+                            adapter.notifyDataSetChanged()
+                        }
+                    }
+                    runOnUiThread {
+                        searchButton.isEnabled = true
+                    }
                 }
-                search_button.isEnabled = true
             }
-
-        })
+            catch(e:Exception){
+                Toast.makeText(applicationContext, "Connection problem! The server took too long to respond. Please check your Internet connection.", Toast.LENGTH_LONG).show()
+            }
+        }
 
         addressList.setOnItemClickListener{ _, _, position, _ ->
             addTargetMarker(addresses[position].latitude, addresses[position].longitude)
             mLocationOverlay!!.disableFollowLocation()
             map!!.setExpectedCenter(GeoPoint(addresses[position].latitude, addresses[position].longitude))
             popupWindow.dismiss()
-            true
         }
 
 
@@ -581,8 +556,8 @@ class MainActivity : AppCompatActivity(){
         popupWindow.showAtLocation(findViewById(android.R.id.content), Gravity.TOP, 0, 0)
     }
 
-    private fun showGPSDialog(){
-        val builder = AlertDialog.Builder(this_)
+    fun showGPSDialog(){
+        val builder = AlertDialog.Builder(applicationContext)
         builder.setTitle("GPS not enabled!")
                 .setMessage("The app requires GPS in order to work properly. Press ok to continue to settings to enable GPS or cancel to exit.")
                 .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -590,7 +565,7 @@ class MainActivity : AppCompatActivity(){
                     startActivityForResult(locIntent, 1)
                 }
                 .setNegativeButton(android.R.string.no) { _, _ ->
-                    this_!!.finish()
+                    finish()
                 }.setIcon(android.R.drawable.ic_dialog_alert)
                 .setOnCancelListener {
                     builder.show()
@@ -620,13 +595,12 @@ class MainActivity : AppCompatActivity(){
     }
 
     private fun locationStringGenerator(s:String, targetMarker:Marker?) : String{
-        var tmp = s + "/" + targetMarker!!.position.latitude.toString() + "/" + targetMarker!!.position.longitude.toString()
-        return tmp
+        return s + "/" + targetMarker!!.position.latitude.toString() + "/" + targetMarker!!.position.longitude.toString()
+
     }
 
     private fun locationStringGenerator(s:String, lat:Double, lon:Double) : String{
-        var tmp = s + "/" + lat.toString() + "/" + lon.toString()
-        return tmp
+        return s + "/" + lat.toString() + "/" + lon.toString()
     }
 
     private fun isHeadphonesPlugged(): Boolean{
@@ -664,111 +638,6 @@ class MainActivity : AppCompatActivity(){
             service.createNotificationChannel(chan)
         }
         return channelId
-    }
-
-    class NoTapPolygon(map:MapView?) : Polygon(map) {
-
-        override fun onSingleTapConfirmed(e: MotionEvent, mapView:MapView ): Boolean {
-            return false
-        }
-    }
-
-    class LocationService2 : Service() {
-
-        override fun onBind(intent: Intent?): IBinder? {
-            val mContext = applicationContext
-            locationManager = mContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val isGPSEnabled = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
-
-            rxPermissions!!.request(Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.INTERNET,
-                    Manifest.permission.ACCESS_NETWORK_STATE) // ask single or multiple permission once
-                    .subscribe { granted ->
-                        if (granted) {
-                            if (isGPSEnabled) {
-                                if (locationManager != null) {
-
-                                    gpsLocationListener = object : LocationListener {
-                                        override fun onLocationChanged(loc: Location) {
-                                            if (check) {
-                                                val results = FloatArray(3)
-                                                distanceBetween(loc.latitude, loc.longitude, targetMarker!!.position.latitude, targetMarker!!.position.longitude, results)
-                                                if (results[0] <= minDist) {
-                                                    ringtone!!.play()
-                                                    this_!!.vibrateIt()
-                                                    map!!.overlays.remove(circle)
-                                                    map!!.overlays.remove(targetMarker)
-                                                    check = false
-                                                    map!!.invalidate()
-                                                    val builder = AlertDialog.Builder(this_)
-                                                    builder.setTitle("WAKE UP!")
-                                                            .setMessage("Stop alarm?")
-                                                            .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                                                                dialog.cancel()
-                                                            }.setIcon(android.R.drawable.ic_dialog_alert)
-                                                            .setOnCancelListener {
-                                                                ringtone!!.stop()
-                                                                vib!!.cancel()
-                                                                vibrating = false
-                                                            }
-                                                            .show()
-                                                }
-                                            }
-                                        }
-                                        override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {}
-                                        override fun onProviderEnabled(provider: String) {}
-                                        override fun onProviderDisabled(provider: String) {
-                                            this_!!.showGPSDialog()
-                                        }
-                                    }
-                                    try {
-                                        locationManager!!.requestLocationUpdates(LocationManager.GPS_PROVIDER,
-                                                1, 1f,
-                                                gpsLocationListener)
-                                        startForeground(16, notif)
-                                    } catch (e: SecurityException) {
-                                        // TODO handle this!
-                                    }
-                                }
-                            }
-                            else{
-                                this_!!.showGPSDialog()
-
-                            }
-                        } else {
-                            val builder = AlertDialog.Builder(this_)
-                            builder.setTitle("PERMISSIONS ERROR!")
-                                    .setMessage("The app cannot work without the required permissions. Exiting...")
-                                    .setPositiveButton(android.R.string.ok) { dialog, _ ->
-                                        this_!!.finish()
-                                    }.setIcon(android.R.drawable.ic_dialog_alert)
-                                    .setOnCancelListener {
-                                        this_!!.finish()
-                                    }
-                                    .show()
-                        }
-                    }
-            return null
-        }
-    }
-
-    private class ReverseGeocodingAsyncTask(name:String, m:Int) : AsyncTask<String, Int, ArrayList<Address>>() {
-
-        var name:String = name
-        var maxRes:Int = m
-
-        override fun doInBackground(vararg params: String?) : ArrayList<Address>{
-            var foundAddresses = ArrayList<Address>()
-            val geocoderNominatim = GeocoderNominatim("name=George Stavrinos,email=stavrinosgeo@gmail.com,app=destination_alarm")
-            geocoderNominatim.setService("https://nominatim.openstreetmap.org/")
-            try{
-                    foundAddresses.addAll(geocoderNominatim.getFromLocationName(name, maxRes))
-                    return foundAddresses
-                } catch(e:Exception){
-
-                }
-                return foundAddresses
-            }
     }
 
 }
