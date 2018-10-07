@@ -29,7 +29,7 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Prompt user to enable GPS on startup [DONE]</del>
 * <del>Change to bigger, clearer icons [DONE]<del>
 * <del>Change the appearance of the fragments [DONE]</del>
-* Add Application launcher and notification icons
+* <del>Add Application launcher and notification icons [DONE]</del>
 * Move the extra classes on different kotlin files, and fix the global variables!
 * Prompt user for internet access when in online mode?? Maybe not...
 * <del>Do something with the volume [IT'S THE USER'S PROBLEM]</del>
@@ -44,3 +44,4 @@ setting by Vectorstall from the Noun Project
 Download Map by Ben Davis from the Noun Project
 Download by Kimmi Studio from the Noun Project
 current location by Balam Palma from the Noun Project
+Bus by Orkhan Mursalov from the Noun Project
