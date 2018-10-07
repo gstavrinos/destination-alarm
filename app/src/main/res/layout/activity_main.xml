@@ -88,4 +88,13 @@ android:layout_height="fill_parent"
         android:background="@drawable/download_map_icon"
         android:cropToPadding="true" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:text="© OpenStreetMap contributors"
+        android:textSize="10dp"/>
+
+
 </RelativeLayout>

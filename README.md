@@ -4,7 +4,25 @@ An Android application that wakes you up near the GPS location you provided. Sle
 
 A project to familiarize myself with Kotlin and OpenStreetMap! :)
 
-### TODOs
+## Credits
+
+### Libraries
+OpenStreetMap - https://www.openstreetmap.org
+OSMDroid - https://github.com/osmdroid/osmdroid
+OSMBonusPack - https://github.com/MKergall/osmbonuspack
+
+### Icons
+wake up by Chinnaking from the Noun Project
+Star by y. onaldi from the Noun Project
+search map by b farias from the Noun Project
+setting by Vectorstall from the Noun Project
+Download Map by Ben Davis from the Noun Project
+Download by Kimmi Studio from the Noun Project
+current location by Balam Palma from the Noun Project
+Bus by Orkhan Mursalov from the Noun Project
+
+
+## TODOs
 * <del>Add ability to select target location [DONE]</del>
 * <del>Add ability to select radius of alarm [DONE]</del>
 * <del>Add visualization of minDist (radius) [DONE]</del>
@@ -36,13 +54,3 @@ A project to familiarize myself with Kotlin and OpenStreetMap! :)
 * <del>Do something with the volume [IT'S THE USER'S PROBLEM]</del>
 * <del>Allow the app to chooce between alarm and notifications (for speakers vs headphones use) [GREW SICK OF IT]</del>
 * <del>Add night map & satelite map [REJECTED]</del>
-
-##### Icons
-wake up by Chinnaking from the Noun Project
-Star by y. onaldi from the Noun Project
-search map by b farias from the Noun Project
-setting by Vectorstall from the Noun Project
-Download Map by Ben Davis from the Noun Project
-Download by Kimmi Studio from the Noun Project
-current location by Balam Palma from the Noun Project
-Bus by Orkhan Mursalov from the Noun Project
