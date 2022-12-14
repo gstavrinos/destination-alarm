@@ -41,9 +41,9 @@ class MainActivity : AppCompatActivity(){
     private var settings:SharedPreferences? = null
     private var editor: SharedPreferences.Editor? = null
     private var favourites: MutableSet<String>? = TreeSet()
-    private val favLocs = ArrayList<String>()
-    private val favLats = ArrayList<Double>()
-    private val favLons = ArrayList<Double>()
+    private val faveLocations = ArrayList<String>()
+    private val faveLatitudeValues = ArrayList<Double>()
+    private val faveLongitudeValues = ArrayList<Double>()
     private var mLocationOverlay:MyLocationNewOverlay? = null
     private var notification: Uri? = null
     private var mConnection: ServiceConnection? = null
@@ -76,8 +76,8 @@ class MainActivity : AppCompatActivity(){
 
 
         val snd = settings!!.getString("alarm_sound", RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM).toString())
-        val alarmFile = File(snd)
-        notification = if (!alarmFile.exists()) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else Uri.parse(snd)
+        val alarmFile = snd?.let { File(it) }
+        notification = if (!alarmFile?.exists()!!) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else Uri.parse(snd)
 
         ringtone = RingtoneManager.getRingtone(superDirty, notification)
         ringtone!!.audioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED).build()
@@ -99,12 +99,12 @@ class MainActivity : AppCompatActivity(){
 
         favourites = settings!!.getStringSet("favourites", TreeSet())
         val arraylists = updateFavLocArrayLists(favourites!!)
-        favLocs.clear()
-        favLocs.addAll(arraylists.first)
-        favLats.clear()
-        favLats.addAll(arraylists.second)
-        favLons.clear()
-        favLons.addAll(arraylists.third)
+        faveLocations.clear()
+        faveLocations.addAll(arraylists.first)
+        faveLatitudeValues.clear()
+        faveLatitudeValues.addAll(arraylists.second)
+        faveLongitudeValues.clear()
+        faveLongitudeValues.addAll(arraylists.third)
 
         map = findViewById(R.id.mapview)
         map!!.setTileSource(TileSourceFactory.MAPNIK)
@@ -115,9 +115,9 @@ class MainActivity : AppCompatActivity(){
         map!!.minZoomLevel = 3.5
         map!!.setUseDataConnection(!settings!!.getBoolean("offline_mode", false))
 
-        val settingsbutton:ImageButton = findViewById(R.id.settings_button)
+        val settingsButton:ImageButton = findViewById(R.id.settings_button)
 
-        settingsbutton.setOnClickListener {
+        settingsButton.setOnClickListener {
             showPopupSettings()
         }
 
@@ -127,9 +127,9 @@ class MainActivity : AppCompatActivity(){
             showPopupAddressList()
         }
 
-        val favbutton:ImageButton = findViewById(R.id.favourites_button)
+        val favoriteButton:ImageButton = findViewById(R.id.favourites_button)
 
-        favbutton.setOnClickListener {
+        favoriteButton.setOnClickListener {
             showPopupFav()
         }
 
@@ -201,13 +201,13 @@ class MainActivity : AppCompatActivity(){
         val downloadMapButton = findViewById<ImageButton>(R.id.download_maps_button)
         downloadMapButton.setOnClickListener {
             Configuration.getInstance().expirationOverrideDuration = 31557600000000 // 1000 years!
-            Log.e("DOWNLOAD BUTTON", "DOWNLOAD BUTTON")
+            Log.e("DOWNLOAD BUTTON", "Download button pressed")
             val cacheManager = CacheManager(map)
             val zoomMin = map!!.zoomLevelDouble.toInt()
             var zoomMax = map!!.maxZoomLevel.toInt() - 10
             zoomMax = if (zoomMax < zoomMin) zoomMin else zoomMax
-            val t = cacheManager.downloadAreaAsync(superDirty, map!!.boundingBox, zoomMin, zoomMax)
-            Log.e("STATUSSSSSSS",t.status.toString())
+            val cacheManagerTask = cacheManager.downloadAreaAsync(superDirty, map!!.boundingBox, zoomMin, zoomMax)
+            Log.e("Download map cache manager status",cacheManagerTask.status.toString())
         }
     }
 
@@ -305,36 +305,30 @@ class MainActivity : AppCompatActivity(){
 
         val offlineSelection = popupView.findViewById<CheckBox>(R.id.offline_selection)
         offlineSelection.isChecked = settings!!.getBoolean("offline_mode", false)
-        offlineSelection.setOnClickListener(object: View.OnClickListener{
-            override fun onClick(v: View?) {
-                map!!.setUseDataConnection(!offlineSelection.isChecked)
-                editor!!.putBoolean("offline_mode", offlineSelection.isChecked)
-                editor!!.apply()
-            }
-
-        })
+        offlineSelection.setOnClickListener {
+            map!!.setUseDataConnection(!offlineSelection.isChecked)
+            editor!!.putBoolean("offline_mode", offlineSelection.isChecked)
+            editor!!.apply()
+        }
 
         val deleteCacheButton = popupView.findViewById<Button>(R.id.clean_cache_button)
-        deleteCacheButton.setOnClickListener(object: View.OnClickListener{
-            override fun onClick(v: View?) {
-                map!!.getTileProvider().clearTileCache()
-                Toast.makeText(superDirty, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
-            }
-
-        })
+        deleteCacheButton.setOnClickListener {
+            map!!.tileProvider.clearTileCache()
+            Toast.makeText(superDirty, "Cache was deleted successfully!", Toast.LENGTH_LONG).show()
+        }
 
         val alarmSoundButton = popupView.findViewById<Button>(R.id.alarm_sound_button)
-        alarmSoundButton.setOnClickListener(object: View.OnClickListener{
-            override fun onClick(v: View?) {
-                val sndmngtIntent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
-                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
-                sndmngtIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
-                startActivityForResult(sndmngtIntent, 5)
-            }
-
-        })
+        alarmSoundButton.setOnClickListener {
+            val soundManagerIntent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+            soundManagerIntent.putExtra(
+                RingtoneManager.EXTRA_RINGTONE_TYPE,
+                RingtoneManager.TYPE_ALARM
+            )
+            soundManagerIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Alarm Sound")
+            soundManagerIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, notification)
+            soundManagerIntent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            startActivityForResult(soundManagerIntent, 5)
+        }
 
         val alarmSoundSelection: RadioGroup = popupView.findViewById(R.id.sound_source_selection)
         if(settings!!.getBoolean("useSpeaker", true)){
@@ -344,14 +338,11 @@ class MainActivity : AppCompatActivity(){
             alarmSoundSelection.check((R.id.headphones_radio))
         }
 
-        alarmSoundSelection.setOnCheckedChangeListener(object: RadioGroup.OnCheckedChangeListener{
-            override fun onCheckedChanged(group: RadioGroup?, checkedId: Int) {
-                editor!!.putBoolean("useSpeaker", checkedId == R.id.speaker_radio)
-                editor!!.apply()
-                //audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
-            }
-
-        })
+        alarmSoundSelection.setOnCheckedChangeListener { _, checkedId ->
+            editor!!.putBoolean("useSpeaker", checkedId == R.id.speaker_radio)
+            editor!!.apply()
+            //audioManager!!.isSpeakerphoneOn = checkedId == R.id.speaker_radio
+        }
 
 
         val bg = ColorDrawable(0xCC333333.toInt())
@@ -368,31 +359,31 @@ class MainActivity : AppCompatActivity(){
 
         popupWindow.isFocusable = true
 
-        val savebutton = popupView.findViewById<Button>(R.id.save_button)
-        val cancelbutton = popupView.findViewById<Button>(R.id.cancel_button)
-        val favn = popupView.findViewById<EditText>(R.id.fav_name)
+        val saveButton = popupView.findViewById<Button>(R.id.save_button)
+        val cancelButton = popupView.findViewById<Button>(R.id.cancel_button)
+        val faveTextView = popupView.findViewById<EditText>(R.id.fav_name)
 
-        savebutton.setOnClickListener{
-            if (favn.text.contains("/")){
+        saveButton.setOnClickListener{
+            if (faveTextView.text.contains("/")){
                 Toast.makeText(superDirty, "Location name cannot contain a \"/\"!", Toast.LENGTH_LONG).show()
             }
-            else if(favn.text.isEmpty()){
+            else if(faveTextView.text.isEmpty()){
                 Toast.makeText(superDirty, "Location name cannot be empty!", Toast.LENGTH_LONG).show()
             }
             else{
-                val stringToAdd = locationStringGenerator(favn.text.toString(), targetMarker)
-                if(favLocs.contains(favn.text.toString())){
+                val stringToAdd = locationStringGenerator(faveTextView.text.toString(), targetMarker)
+                if(faveLocations.contains(faveTextView.text.toString())){
                     Toast.makeText(superDirty, "Already in favourites!", Toast.LENGTH_LONG).show()
                 }
                 else{
                     favourites!!.add(stringToAdd)
                     val arraylists = updateFavLocArrayLists(favourites!!)
-                    favLocs.clear()
-                    favLocs.addAll(arraylists.first)
-                    favLats.clear()
-                    favLats.addAll(arraylists.second)
-                    favLons.clear()
-                    favLons.addAll(arraylists.third)
+                    faveLocations.clear()
+                    faveLocations.addAll(arraylists.first)
+                    faveLatitudeValues.clear()
+                    faveLatitudeValues.addAll(arraylists.second)
+                    faveLongitudeValues.clear()
+                    faveLongitudeValues.addAll(arraylists.third)
                     editor!!.clear()
                     editor!!.putStringSet("favourites", favourites)
                     editor!!.apply()
@@ -403,7 +394,7 @@ class MainActivity : AppCompatActivity(){
             }
         }
 
-        cancelbutton.setOnClickListener{
+        cancelButton.setOnClickListener{
             popupWindow.dismiss()
         }
 
@@ -415,30 +406,30 @@ class MainActivity : AppCompatActivity(){
     }
 
     private fun showPopupFav() {
-        if(!favLocs.isEmpty()){
+        if(faveLocations.isNotEmpty()){
             val popupView: View = layoutInflater.inflate(R.layout.favourites_list, null)
 
             val popupWindow = PopupWindow(popupView, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
             popupWindow.isFocusable = true
 
-            val favlist = popupView.findViewById<ListView>(R.id.fav_list)
-            val adapter = superDirty?.let { ArrayAdapter<String>(it,android.R.layout.simple_list_item_1, favLocs) }
-            favlist.adapter = adapter
+            val faveListView = popupView.findViewById<ListView>(R.id.fav_list)
+            val adapter = superDirty?.let { ArrayAdapter(it,android.R.layout.simple_list_item_1, faveLocations) }
+            faveListView.adapter = adapter
 
-            favlist.setOnItemLongClickListener{ _, _, position, _ ->
+            faveListView.setOnItemLongClickListener{ _, _, position, _ ->
                 val builder = AlertDialog.Builder(superDirty)
                 builder.setTitle("WARNING!")
                         .setMessage("Remove location from favourites?")
                         .setPositiveButton(android.R.string.yes) { dialog, _ ->
-                            favourites!!.remove(locationStringGenerator(favLocs[position], favLats[position], favLons[position]))
+                            favourites!!.remove(locationStringGenerator(faveLocations[position], faveLatitudeValues[position], faveLongitudeValues[position]))
                             val arraylists = updateFavLocArrayLists(favourites!!)
-                            favLocs.clear()
-                            favLocs.addAll(arraylists.first)
-                            favLats.clear()
-                            favLats.addAll(arraylists.second)
-                            favLons.clear()
-                            favLons.addAll(arraylists.third)
+                            faveLocations.clear()
+                            faveLocations.addAll(arraylists.first)
+                            faveLatitudeValues.clear()
+                            faveLatitudeValues.addAll(arraylists.second)
+                            faveLongitudeValues.clear()
+                            faveLongitudeValues.addAll(arraylists.third)
                             adapter?.notifyDataSetChanged()
                             editor!!.clear()
                             editor!!.putStringSet("favourites", favourites)
@@ -454,10 +445,10 @@ class MainActivity : AppCompatActivity(){
                 true
             }
 
-            favlist.setOnItemClickListener{ _, _, position, _ ->
-                addTargetMarker(favLats[position], favLons[position])
+            faveListView.setOnItemClickListener{ _, _, position, _ ->
+                addTargetMarker(faveLatitudeValues[position], faveLongitudeValues[position])
                 mLocationOverlay!!.disableFollowLocation()
-                map!!.setExpectedCenter(GeoPoint(favLats[position], favLons[position]))
+                map!!.setExpectedCenter(GeoPoint(faveLatitudeValues[position], faveLongitudeValues[position]))
                 popupWindow.dismiss()
             }
 
@@ -481,7 +472,7 @@ class MainActivity : AppCompatActivity(){
         val addresses = ArrayList<Address>()
         val addressesString = ArrayList<String>()
         val addressList = popupView.findViewById<ListView>(R.id.address_list)
-        val adapter = superDirty?.let { ArrayAdapter<String>(it,android.R.layout.simple_list_item_1, addressesString) }
+        val adapter = superDirty?.let { ArrayAdapter(it,android.R.layout.simple_list_item_1, addressesString) }
         addressList.adapter = adapter
 
         val searchButton = popupView.findViewById<ImageButton>(R.id.search_button)
@@ -495,7 +486,7 @@ class MainActivity : AppCompatActivity(){
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                searchButton.isEnabled = !s!!.trim().isEmpty()
+                searchButton.isEnabled = s!!.trim().isNotEmpty()
             }
 
         })
@@ -608,12 +599,12 @@ class MainActivity : AppCompatActivity(){
     }
 
     private fun locationStringGenerator(s:String, targetMarker:Marker?) : String{
-        return s + "/" + targetMarker!!.position.latitude.toString() + "/" + targetMarker!!.position.longitude.toString()
+        return s + "/" + targetMarker!!.position.latitude.toString() + "/" + targetMarker.position.longitude.toString()
 
     }
 
     private fun locationStringGenerator(s:String, lat:Double, lon:Double) : String{
-        return s + "/" + lat.toString() + "/" + lon.toString()
+        return "$s/$lat/$lon"
     }
 
     private fun isHeadphonesPlugged(): Boolean{
