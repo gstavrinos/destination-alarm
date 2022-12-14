@@ -13,8 +13,8 @@ import org.osmdroid.util.GeoPoint
 import android.media.*
 import android.net.Uri
 import android.os.*
-import android.support.v4.app.NotificationCompat
-import android.support.v7.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.appcompat.app.AppCompatActivity
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -230,6 +230,7 @@ class MainActivity : AppCompatActivity(){
         //ringtone!!.stop()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (resultCode == -1 && requestCode == 5) {
             val tmp:Uri? = data!!.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
@@ -422,7 +423,7 @@ class MainActivity : AppCompatActivity(){
             popupWindow.isFocusable = true
 
             val favlist = popupView.findViewById<ListView>(R.id.fav_list)
-            val adapter = ArrayAdapter<String>(superDirty,android.R.layout.simple_list_item_1, favLocs)
+            val adapter = superDirty?.let { ArrayAdapter<String>(it,android.R.layout.simple_list_item_1, favLocs) }
             favlist.adapter = adapter
 
             favlist.setOnItemLongClickListener{ _, _, position, _ ->
@@ -438,7 +439,7 @@ class MainActivity : AppCompatActivity(){
                             favLats.addAll(arraylists.second)
                             favLons.clear()
                             favLons.addAll(arraylists.third)
-                            adapter.notifyDataSetChanged()
+                            adapter?.notifyDataSetChanged()
                             editor!!.clear()
                             editor!!.putStringSet("favourites", favourites)
                             editor!!.apply()
@@ -480,7 +481,7 @@ class MainActivity : AppCompatActivity(){
         val addresses = ArrayList<Address>()
         val addressesString = ArrayList<String>()
         val addressList = popupView.findViewById<ListView>(R.id.address_list)
-        val adapter = ArrayAdapter<String>(superDirty,android.R.layout.simple_list_item_1, addressesString)
+        val adapter = superDirty?.let { ArrayAdapter<String>(it,android.R.layout.simple_list_item_1, addressesString) }
         addressList.adapter = adapter
 
         val searchButton = popupView.findViewById<ImageButton>(R.id.search_button)
@@ -511,7 +512,7 @@ class MainActivity : AppCompatActivity(){
             try {
                 addresses.clear()
                 addressesString.clear()
-                adapter.notifyDataSetChanged()
+                adapter?.notifyDataSetChanged()
                 thread {
                     try {
                         val searchAddressTask = ReverseGeocodingAsyncTask(addressSearch.text.toString(), 50)
@@ -534,7 +535,7 @@ class MainActivity : AppCompatActivity(){
                                 addressesString.add(nextAddress)
                             }
                             runOnUiThread {
-                                adapter.notifyDataSetChanged()
+                                adapter?.notifyDataSetChanged()
                             }
                         }
                         runOnUiThread {
@@ -616,7 +617,7 @@ class MainActivity : AppCompatActivity(){
     }
 
     private fun isHeadphonesPlugged(): Boolean{
-        val audioDevices: Array<AudioDeviceInfo> = audioManager!!.getDevices(AudioManager.GET_DEVICES_ALL)
+        val audioDevices: Array<AudioDeviceInfo> = audioManager!!.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
         for(deviceInfo in audioDevices){
             if(deviceInfo.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || deviceInfo.type == AudioDeviceInfo.TYPE_WIRED_HEADSET){
                 return true
